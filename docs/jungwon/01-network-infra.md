@@ -3,10 +3,13 @@
 ## Proxmox 노드 IP 설정
 
 - Pfsense 하위 VLAN 대역 IP로 설정할 경우
-  - Pfsense가 망가지면 클러스터도 같이 망가짐 (클러스터간 라우팅 불가 = 클러스터 망가짐)
-  - Pfsense HA만으로는 충분하지 않고 이중화 구성으로 해결하는 방법도 있으나 라우터 하위 IP로 잡는 것이 더 적절하다고 판단
-- 실제 물리 라우터 하위 IP 대역으로 설정
-  - Pfsense와 무관하게 클러스터가 동작함
+  - Pfsense가 망가지면 Proxmox 웹 콘솔 접근 불가(VLAN 대역 라우팅 불가능)
+  - 클러스터 통신 자체는 10G 망으로 설정해두었기 때문에 Pfsense와 무관함
+  - Proxmox 관리 콘솔 안정성을 위해 Pfsense 이중화를 구성하는 것은 오버엔지니어링이라 판단해 스킵함
+    - Pfsense VLAN 대역 라우팅의 경우 Proxmox HA를 통해 안정성 확보
+      - Pfsense Proxmox HA가 동작하는 동안의 일시적인 장애는 우선 보류
+- 물리 라우터 하위 IP 대역으로 설정
+  - Pfsense와 무관하게 웹 콘솔 접근 가능
     | 장비 | 역할 | IP |
     | ------- | ------------------ | ------------ |
     | kosa20 | Proxmox Node | 192.168.34.2 |
@@ -18,8 +21,7 @@
 
 ## Proxmox 클러스터 10G 설정
 
-- Proxmox Cluster 생성 명령어
-  - link 옵션에 10G 네트워크 설정
+- Proxmox Cluster 생성 명령어 link 옵션에 10G 네트워크 명시
   - `/etc/pve/corosync.conf` 나머지 노드 addr 10G 설정
 
 ![proxmox 10g](./images/01/proxmox-10g.png)
