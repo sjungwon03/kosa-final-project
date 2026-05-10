@@ -1,1 +1,1 @@
-# kosa-final-project
+# KOSA 최종프로젝트 - 4팀
