@@ -1,0 +1,19 @@
+{{- if .Values.global.multiCluster.federation }}
+apiVersion: multicluster.x-k8s.io/v1alpha1
+kind: ServiceExport
+metadata:
+  name: api-gateway
+  namespace: {{ .Values.global.namespace }}
+---
+apiVersion: multicluster.x-k8s.io/v1alpha1
+kind: ServiceExport
+metadata:
+  name: employee_service
+  namespace: {{ .Values.global.namespace }}
+---
+apiVersion: multicluster.x-k8s.io/v1alpha1
+kind: ServiceExport
+metadata:
+  name: welfare_service
+  namespace: {{ .Values.global.namespace }}
+{{- end }}

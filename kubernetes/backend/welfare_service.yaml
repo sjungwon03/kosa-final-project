@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: welfare-service-config
+  namespace: kosa
+data:
+  MYSQL_HOST: "mysql-master"
+  MYSQL_PORT: "3306"
+  MYSQL_USER: "root"
+  MYSQL_PASSWORD: "password"
+  MYSQL_DATABASE: "kosa"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  ENV: "production"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: welfare-service
+  namespace: kosa
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: welfare-service
+  template:
+    metadata:
+      labels:
+        app: welfare-service
+    spec:
+      containers:
+      - name: welfare-service
+        image: kosa/welfare-service:latest
+        envFrom:
+        - configMapRef:
+            name: welfare-service-config
+        ports:
+        - containerPort: 8002
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: welfare-service
+  namespace: kosa
+spec:
+  selector:
+    app: welfare-service
+  ports:
+  - port: 8002
+    targetPort: 8002
+  type: ClusterIP

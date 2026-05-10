@@ -1,0 +1,26 @@
+{{- if .Values.apiGateway.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: api-gateway
+    {{- if .Values.global.multiCluster.federation }}
+    federation.k8s.io/service-export-name: api-gateway
+    federation.k8s.io/service-export-namespace: {{ .Values.global.namespace }}
+    {{- end }}
+spec:
+  type: {{ .Values.apiGateway.service.type }}
+  ports:
+  - port: {{ .Values.apiGateway.service.port }}
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: api-gateway
+  {{- if .Values.apiGateway.service.annotations }}
+  annotations:
+    {{- toYaml .Values.apiGateway.service.annotations | nindent 4 }}
+  {{- end }}
+{{- end }}

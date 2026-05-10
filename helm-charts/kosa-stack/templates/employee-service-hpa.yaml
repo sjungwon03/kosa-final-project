@@ -1,0 +1,23 @@
+{{- if and .Values.employeeService.enabled .Values.employeeService.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: employee_service-hpa
+  namespace: {{ .Values.global.namespace }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: employee_service
+  minReplicas: {{ .Values.employeeService.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.employeeService.autoscaling.maxReplicas }}
+  metrics:
+  {{- if .Values.employeeService.autoscaling.targetCPUUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.employeeService.autoscaling.targetCPUUtilizationPercentage }}
+  {{- end }}
+{{- end }}

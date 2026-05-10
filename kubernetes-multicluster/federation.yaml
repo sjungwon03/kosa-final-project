@@ -1,0 +1,51 @@
+apiVersion: multicluster.k8s.io/v1alpha1
+kind: ClusterSet
+metadata:
+  name: kosa-clusterset
+spec:
+  clusters:
+  - name: onprem-cluster
+    clusterSetMember:
+      - name: onprem
+        clusterRole: primary
+    cluster:
+      server: https://onprem-k8s.example.com
+      certificate-authority-data: <onprem-ca-cert>
+  - name: aws-cluster
+    clusterSetMember:
+      - name: aws
+        clusterRole: secondary
+    cluster:
+      server: https://aws-eks.example.com
+      certificate-authority-data: <aws-ca-cert>
+---
+apiVersion: multicluster.k8s.io/v1alpha1
+kind: ClusterSetBinding
+metadata:
+  name: kosa-clusterset-binding
+spec:
+  clusterSets:
+  - name: kosa-clusterset
+  namespaceSelector:
+    matchLabels:
+      federation.k8s.io/managed: "true"
+---
+apiVersion: core.kubefed.io/v1beta1
+kind: KubeFedCluster
+metadata:
+  name: onprem-cluster
+  namespace: kube-federation-system
+spec:
+  apiEndpoint: https://onprem-k8s.example.com
+  caBundle: <base64-encoded-ca-cert>
+  proxy: ""
+---
+apiVersion: core.kubefed.io/v1beta1
+kind: KubeFedCluster
+metadata:
+  name: aws-cluster
+  namespace: kube-federation-system
+spec:
+  apiEndpoint: https://aws-eks.example.com
+  caBundle: <base64-encoded-ca-cert>
+  proxy: ""

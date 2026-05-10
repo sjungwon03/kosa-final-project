@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.global.namespace }}
+  labels: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kosa-config
+  namespace: {{ .Values.global.namespace }}
+data:
+  ENV: {{ .Values.global.env }}
+  CLUSTER_TYPE: {{ .Values.global.cloudbursting.primaryCluster }}
+  CLOUDBURSTING_ENABLED: "{{ .Values.global.cloudbursting.enabled }}"
+  PRIMARY_CLUSTER: {{ .Values.global.cloudbursting.primaryCluster }}
+  SECONDARY_CLUSTER: {{ .Values.global.cloudbursting.secondaryCluster }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+  namespace: {{ .Values.global.namespace }}
+type: Opaque
+data:
+  password: {{ .Values.mysql.auth.rootPassword | b64enc }}
+  username: {{ "root" | b64enc }}
+  database: {{ .Values.mysql.auth.database | b64enc }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jwt-secret
+  namespace: {{ .Values.global.namespace }}
+type: Opaque
+data:
+  secret-key: {{ "your-secret-key-here" | b64enc }}
+  algorithm: {{ "HS256" | b64enc }}

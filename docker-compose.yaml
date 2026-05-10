@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: kosa-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: kosa
+      MYSQL_USER: kosa
+      MYSQL_PASSWORD: kosa123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - kosa-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: kosa-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - kosa-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  employee_service:
+    build:
+      context: ./backend
+      dockerfile: employee_service/Dockerfile
+    container_name: kosa-employee_service
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=kosa
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    ports:
+      - "8001:8001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - kosa-network
+    volumes:
+      - ./backend:/app
+
+  welfare_service:
+    build:
+      context: ./backend
+      dockerfile: welfare_service/Dockerfile
+    container_name: kosa-welfare_service
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=kosa
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    ports:
+      - "8002:8002"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - kosa-network
+    volumes:
+      - ./backend:/app
+
+  api-gateway:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kosa-api-gateway
+    environment:
+      - EMPLOYEE_SERVICE_URL=http://employee_service:8001
+      - WELFARE_SERVICE_URL=http://welfare_service:8002
+    ports:
+      - "8000:8000"
+    depends_on:
+      - employee_service
+      - welfare_service
+    networks:
+      - kosa-network
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kosa-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
+    networks:
+      - kosa-network
+
+networks:
+  kosa-network:
+    driver: bridge
+
+volumes:
+  mysql-data:

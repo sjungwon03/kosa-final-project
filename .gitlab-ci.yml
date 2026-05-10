@@ -1,0 +1,136 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  DOCKER_REGISTRY: harbor.kosa.local
+  DOCKER_IMAGE: $DOCKER_REGISTRY/kosa/$CI_PROJECT_NAME
+  KUBE_NAMESPACE: kosa
+
+before_script:
+  - echo "$HARBOR_PASSWORD" | docker login $DOCKER_REGISTRY -u $HARBOR_USER --password-stdin
+
+build_api_gateway:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - cd backend/api-gateway
+    - docker build -t $DOCKER_IMAGE/api-gateway:$CI_COMMIT_SHA .
+    - docker push $DOCKER_IMAGE/api-gateway:$CI_COMMIT_SHA
+    - docker tag $DOCKER_IMAGE/api-gateway:$CI_COMMIT_SHA $DOCKER_IMAGE/api-gateway:latest
+    - docker push $DOCKER_IMAGE/api-gateway:latest
+  only:
+    - main
+  tags:
+    - k8s-runner
+
+build_employee_service:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - cd backend/employee-service
+    - docker build -t $DOCKER_IMAGE/employee-service:$CI_COMMIT_SHA .
+    - docker push $DOCKER_IMAGE/employee-service:$CI_COMMIT_SHA
+    - docker tag $DOCKER_IMAGE/employee-service:$CI_COMMIT_SHA $DOCKER_IMAGE/employee-service:latest
+    - docker push $DOCKER_IMAGE/employee-service:latest
+  only:
+    - main
+  tags:
+    - k8s-runner
+
+build_welfare_service:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - cd backend/welfare-service
+    - docker build -t $DOCKER_IMAGE/welfare-service:$CI_COMMIT_SHA .
+    - docker push $DOCKER_IMAGE/welfare-service:$CI_COMMIT_SHA
+    - docker tag $DOCKER_IMAGE/welfare-service:$CI_COMMIT_SHA $DOCKER_IMAGE/welfare-service:latest
+    - docker push $DOCKER_IMAGE/welfare-service:latest
+  only:
+    - main
+  tags:
+    - k8s-runner
+
+test_backend:
+  stage: test
+  image: python:3.11-slim
+  script:
+    - cd backend
+    - pip install poetry
+    - poetry install
+    - poetry run pytest
+  only:
+    - main
+  tags:
+    - k8s-runner
+
+deploy_onprem:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl config set-cluster onprem --server=$K8S_ONPREM_API_SERVER --insecure-skip-tls-verify=true
+    - kubectl config set-credentials gitlab --token=$K8S_ONPREM_TOKEN
+    - kubectl config set-context onprem --cluster=onprem --user=gitlab --namespace=$KUBE_NAMESPACE
+    - kubectl config use-context onprem
+    
+    - kubectl set image deployment/api-gateway api-gateway=$DOCKER_IMAGE/api-gateway:$CI_COMMIT_SHA -n $KUBE_NAMESPACE
+    - kubectl set image deployment/employee-service employee-service=$DOCKER_IMAGE/employee-service:$CI_COMMIT_SHA -n $KUBE_NAMESPACE
+    - kubectl set image deployment/welfare-service welfare-service=$DOCKER_IMAGE/welfare-service:$CI_COMMIT_SHA -n $KUBE_NAMESPACE
+    
+    - kubectl rollout status deployment/api-gateway -n $KUBE_NAMESPACE
+    - kubectl rollout status deployment/employee-service -n $KUBE_NAMESPACE
+    - kubectl rollout status deployment/welfare-service -n $KUBE_NAMESPACE
+  only:
+    - main
+  environment:
+    name: onprem
+    url: http://api.kosa.local
+  tags:
+    - k8s-runner
+  when: manual
+
+deploy_aws:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl config set-cluster aws --server=$K8S_AWS_API_SERVER --insecure-skip-tls-verify=true
+    - kubectl config set-credentials gitlab --token=$K8S_AWS_TOKEN
+    - kubectl config set-context aws --cluster=aws --user=gitlab --namespace=$KUBE_NAMESPACE
+    - kubectl config use-context aws
+    
+    - kubectl set image deployment/api-gateway api-gateway=$DOCKER_IMAGE/api-gateway:$CI_COMMIT_SHA -n $KUBE_NAMESPACE --context=aws
+    - kubectl set image deployment/employee-service employee-service=$DOCKER_IMAGE/employee-service:$CI_COMMIT_SHA -n $KUBE_NAMESPACE --context=aws
+    - kubectl set image deployment/welfare-service welfare-service=$DOCKER_IMAGE/welfare-service:$CI_COMMIT_SHA -n $KUBE_NAMESPACE --context=aws
+    
+    - kubectl rollout status deployment/api-gateway -n $KUBE_NAMESPACE --context=aws
+    - kubectl rollout status deployment/employee-service -n $KUBE_NAMESPACE --context=aws
+    - kubectl rollout status deployment/welfare-service -n $KUBE_NAMESPACE --context=aws
+  only:
+    - main
+  environment:
+    name: aws
+    url: http://api.kosa.com
+  tags:
+    - k8s-runner
+  when: manual
+
+rollback_onprem:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl rollout undo deployment/api-gateway -n $KUBE_NAMESPACE --context=onprem
+    - kubectl rollout undo deployment/employee-service -n $KUBE_NAMESPACE --context=onprem
+    - kubectl rollout undo deployment/welfare-service -n $KUBE_NAMESPACE --context=onprem
+  only:
+    - main
+  tags:
+    - k8s-runner
+  when: manual

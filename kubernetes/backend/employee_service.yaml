@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: employee_service-config
+  namespace: kosa
+data:
+  MYSQL_HOST: "mysql-master"
+  MYSQL_PORT: "3306"
+  MYSQL_USER: "root"
+  MYSQL_PASSWORD: "password"
+  MYSQL_DATABASE: "kosa"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  ENV: "production"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: employee_service
+  namespace: kosa
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: employee_service
+  template:
+    metadata:
+      labels:
+        app: employee_service
+    spec:
+      containers:
+      - name: employee_service
+        image: kosa/employee_service:latest
+        envFrom:
+        - configMapRef:
+            name: employee_service-config
+        ports:
+        - containerPort: 8001
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: employee_service
+  namespace: kosa
+spec:
+  selector:
+    app: employee_service
+  ports:
+  - port: 8001
+    targetPort: 8001
+  type: ClusterIP

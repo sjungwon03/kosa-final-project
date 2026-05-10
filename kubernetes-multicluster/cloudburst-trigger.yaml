@@ -1,0 +1,93 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cloudburst-trigger
+  namespace: kosa
+spec:
+  template:
+    spec:
+      serviceAccountName: cloudburst-sa
+      containers:
+      - name: trigger
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          # CPU 사용률 체크
+          CPU_THRESHOLD=70
+          
+          # 현재 CPU 사용률 확인
+          CPU_USAGE=$(kubectl top pods -n kosa | grep api-gateway | awk '{print $2}' | sed 's/%//')
+          
+          echo "Current CPU Usage: ${CPU_USAGE}%"
+          
+          # CPU 사용률이 threshold 이상이면 AWS 클러스터로 확장
+          if [ "${CPU_USAGE}" -gt "${CPU_THRESHOLD}" ]; then
+            echo "Triggering cloudbursting to AWS..."
+            
+            # AWS 클러스터의 replicas 증가
+            kubectl --context=aws-cluster patch deployment api-gateway -n kosa -p '{"spec":{"replicas":10}}'
+            kubectl --context=aws-cluster patch deployment employee-service -n kosa -p '{"spec":{"replicas":5}}'
+            kubectl --context=aws-cluster patch deployment welfare-service -n kosa -p '{"spec":{"replicas":5}}'
+            
+            echo "Cloudbursting triggered successfully!"
+          else
+            echo "CPU usage is normal. No cloudbursting needed."
+          fi
+      restartPolicy: OnFailure
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cloudburst-sa
+  namespace: kosa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cloudburst-role
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "patch", "update"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cloudburst-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cloudburst-role
+subjects:
+- kind: ServiceAccount
+  name: cloudburst-sa
+  namespace: kosa
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: cloudburst-monitor
+  namespace: kosa
+spec:
+  scaleTargetRef:
+    apiVersion: batch/v1
+    kind: Job
+    name: cloudburst-trigger
+  minReplicas: 1
+  maxReplicas: 1
+  metrics:
+  - type: External
+    external:
+      metric:
+        name: kosa_cpu_usage_percentage
+        selector:
+          matchLabels:
+            cluster: onprem
+      target:
+        type: Value
+        value: "70"

@@ -1,0 +1,88 @@
+{{- if .Values.welfareService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: welfare_service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: welfare_service
+spec:
+  replicas: {{ .Values.welfareService.replicaCount }}
+  selector:
+    matchLabels:
+      app: welfare_service
+  template:
+    metadata:
+      labels:
+        app: welfare_service
+        {{- if .Values.global.multiCluster.federation }}
+        federation.k8s.io/service-export: "true"
+        {{- end }}
+      annotations: {}
+    spec:
+      containers:
+      - name: welfare_service
+        image: "{{ .Values.global.imageRegistry }}{{ .Values.welfareService.image.repository }}:{{ .Values.welfareService.image.tag }}"
+        imagePullPolicy: {{ .Values.welfareService.image.pullPolicy }}
+        ports:
+        - containerPort: 8002
+          name: http
+        env:
+        - name: MYSQL_HOST
+          {{- if .Values.externalServices.mysql.enabled }}
+          value: {{ .Values.externalServices.mysql.host }}
+          {{- else }}
+          value: {{ .Values.welfareService.database.host }}
+          {{- end }}
+        - name: MYSQL_PORT
+          {{- if .Values.externalServices.mysql.enabled }}
+          value: "{{ .Values.externalServices.mysql.port }}"
+          {{- else }}
+          value: "{{ .Values.welfareService.database.port }}"
+          {{- end }}
+        - name: MYSQL_USER
+          {{- if .Values.externalServices.mysql.enabled }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.externalServices.mysql.passwordSecret }}
+              key: username
+          {{- else }}
+          value: {{ .Values.welfareService.database.user }}
+          {{- end }}
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              {{- if .Values.externalServices.mysql.enabled }}
+              name: {{ .Values.externalServices.mysql.passwordSecret }}
+              key: password
+              {{- else }}
+              name: mysql-secret
+              key: password
+              {{- end }}
+        - name: MYSQL_DATABASE
+          value: {{ .Values.welfareService.database.database }}
+        - name: REDIS_HOST
+          {{- if .Values.externalServices.redis.enabled }}
+          value: {{ .Values.externalServices.redis.host }}
+          {{- else }}
+          value: {{ .Values.welfareService.redis.host }}
+          {{- end }}
+        - name: REDIS_PORT
+          value: "{{ .Values.welfareService.redis.port }}"
+        - name: ENV
+          value: {{ .Values.global.env }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          {{- toYaml .Values.welfareService.resources | nindent 10 }}
+{{- end }}

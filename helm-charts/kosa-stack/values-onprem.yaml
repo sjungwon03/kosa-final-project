@@ -1,0 +1,70 @@
+# 온프레미스 클러스터용 Values
+
+global:
+  env: production
+  namespace: kosa
+  cloudbursting:
+    enabled: true
+    primaryCluster: onprem
+    secondaryCluster: aws
+    scalingThreshold: 70
+    fallbackEnabled: true
+  harborEnabled: true
+
+apiGateway:
+  replicaCount: 2
+  image:
+    repository: harbor.kosa.local/kosa/api-gateway
+    tag: latest
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 20  # 온프레미스 리소스 제한
+  service:
+    type: LoadBalancer  # MetalLB 사용
+    annotations:
+      metallb.universe.tf/address-pool: production
+
+employeeService:
+  replicaCount: 2
+  autoscaling:
+    minReplicas: 2
+    maxReplicas: 15  # 온프레미스 노드 수 제한
+
+welfareService:
+  replicaCount: 2
+  autoscaling:
+    minReplicas: 2
+    maxReplicas: 15
+
+# MySQL MHA 설정
+mysql:
+  enabled: true
+  primary:
+    persistence:
+      size: 50Gi  # 온프레미스 스토리지
+    resources:
+      limits:
+        memory: 2Gi
+        cpu: 1000m
+  secondary:
+    replicaCount: 2
+    persistence:
+      size: 50Gi
+
+redis:
+  enabled: true
+  master:
+    persistence:
+      size: 5Gi
+
+nodeSelector:
+nodeAffinity:
+  onprem:
+    key: cluster-type
+    value: onprem
+    operator: In
+
+# Proxmox 노드 라벨
+nodeSelector:
+  node-role.kubernetes.io/worker: "true"

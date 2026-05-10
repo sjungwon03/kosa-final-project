@@ -1,0 +1,22 @@
+{{- if .Values.employeeService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: employee_service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: employee_service
+    {{- if .Values.global.multiCluster.federation }}
+    federation.k8s.io/service-export-name: employee_service
+    federation.k8s.io/service-export-namespace: {{ .Values.global.namespace }}
+    {{- end }}
+spec:
+  type: {{ .Values.employeeService.service.type }}
+  ports:
+  - port: {{ .Values.employeeService.service.port }}
+    targetPort: 8001
+    protocol: TCP
+    name: http
+  selector:
+    app: employee_service
+{{- end }}

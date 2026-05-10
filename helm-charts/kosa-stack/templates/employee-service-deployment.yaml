@@ -1,0 +1,88 @@
+{{- if .Values.employeeService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: employee_service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: employee_service
+spec:
+  replicas: {{ .Values.employeeService.replicaCount }}
+  selector:
+    matchLabels:
+      app: employee_service
+  template:
+    metadata:
+      labels:
+        app: employee_service
+        {{- if .Values.global.multiCluster.federation }}
+        federation.k8s.io/service-export: "true"
+        {{- end }}
+      annotations: {}
+    spec:
+      containers:
+      - name: employee_service
+        image: "{{ .Values.global.imageRegistry }}{{ .Values.employeeService.image.repository }}:{{ .Values.employeeService.image.tag }}"
+        imagePullPolicy: {{ .Values.employeeService.image.pullPolicy }}
+        ports:
+        - containerPort: 8001
+          name: http
+        env:
+        - name: MYSQL_HOST
+          {{- if .Values.externalServices.mysql.enabled }}
+          value: {{ .Values.externalServices.mysql.host }}
+          {{- else }}
+          value: {{ .Values.employeeService.database.host }}
+          {{- end }}
+        - name: MYSQL_PORT
+          {{- if .Values.externalServices.mysql.enabled }}
+          value: "{{ .Values.externalServices.mysql.port }}"
+          {{- else }}
+          value: "{{ .Values.employeeService.database.port }}"
+          {{- end }}
+        - name: MYSQL_USER
+          {{- if .Values.externalServices.mysql.enabled }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.externalServices.mysql.passwordSecret }}
+              key: username
+          {{- else }}
+          value: {{ .Values.employeeService.database.user }}
+          {{- end }}
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              {{- if .Values.externalServices.mysql.enabled }}
+              name: {{ .Values.externalServices.mysql.passwordSecret }}
+              key: password
+              {{- else }}
+              name: mysql-secret
+              key: password
+              {{- end }}
+        - name: MYSQL_DATABASE
+          value: {{ .Values.employeeService.database.database }}
+        - name: REDIS_HOST
+          {{- if .Values.externalServices.redis.enabled }}
+          value: {{ .Values.externalServices.redis.host }}
+          {{- else }}
+          value: {{ .Values.employeeService.redis.host }}
+          {{- end }}
+        - name: REDIS_PORT
+          value: "{{ .Values.employeeService.redis.port }}"
+        - name: ENV
+          value: {{ .Values.global.env }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          {{- toYaml .Values.employeeService.resources | nindent 10 }}
+{{- end }}

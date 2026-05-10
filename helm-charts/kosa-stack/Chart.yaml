@@ -1,0 +1,33 @@
+apiVersion: v2
+name: kosa-stack
+description: KOSA Employee Management System - Multi-cluster Helm Chart with Cloudbursting support
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+maintainers:
+  - name: KOSA Team
+    email: team@kosa.com
+
+dependencies:
+  - name: redis
+    version: "17.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+  
+  - name: mysql
+    version: "9.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: mysql.enabled
+
+keywords:
+  - employee-management
+  - welfare
+  - points
+  - msa
+  - fastapi
+  - cloudbursting
+  - multi-cluster
+
+annotations:
+  "helm.sh/resource-policy": keep

@@ -1,0 +1,34 @@
+{{- if .Values.global.multiCluster.federation }}
+apiVersion: multicluster.x-k8s.io/v1alpha1
+kind: ServiceImport
+metadata:
+  name: api-gateway
+  namespace: {{ .Values.global.namespace }}
+spec:
+  type: ClusterSetIP
+  ports:
+  - port: 8000
+    protocol: TCP
+---
+apiVersion: multicluster.x-k8s.io/v1alpha1
+kind: ServiceImport
+metadata:
+  name: employee_service
+  namespace: {{ .Values.global.namespace }}
+spec:
+  type: ClusterSetIP
+  ports:
+  - port: 8001
+    protocol: TCP
+---
+apiVersion: multicluster.x-k8s.io/v1alpha1
+kind: ServiceImport
+metadata:
+  name: welfare_service
+  namespace: {{ .Values.global.namespace }}
+spec:
+  type: ClusterSetIP
+  ports:
+  - port: 8002
+    protocol: TCP
+{{- end }}

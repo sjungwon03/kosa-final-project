@@ -1,0 +1,22 @@
+{{- if .Values.welfareService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: welfare_service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: welfare_service
+    {{- if .Values.global.multiCluster.federation }}
+    federation.k8s.io/service-export-name: welfare_service
+    federation.k8s.io/service-export-namespace: {{ .Values.global.namespace }}
+    {{- end }}
+spec:
+  type: {{ .Values.welfareService.service.type }}
+  ports:
+  - port: {{ .Values.welfareService.service.port }}
+    targetPort: 8002
+    protocol: TCP
+    name: http
+  selector:
+    app: welfare_service
+{{- end }}

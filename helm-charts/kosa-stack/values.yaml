@@ -1,0 +1,243 @@
+# Global 설정
+global:
+  env: production
+  namespace: kosa
+  imageRegistry: ""
+  imagePullSecrets: []
+  
+  harborEnabled: true
+  
+  cloudbursting:
+    enabled: true
+    primaryCluster: onprem  # primary: onprem, secondary: aws
+    secondaryCluster: aws
+    scalingThreshold: 70    # CPU/Memory 사용률 70% 이상 시 AWS로 확장
+    fallbackEnabled: true
+  
+  multiCluster:
+    enabled: true
+    federation: true        # Kubernetes Federation v2
+    serviceMesh: istio      # istio 또는 linkerd
+
+# API Gateway 설정
+apiGateway:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    repository: kosa/api-gateway
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: LoadBalancer
+    port: 8000
+    annotations: {}
+  
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+    metrics:
+      - type: Resource
+        resource:
+          name: cpu
+          target:
+            type: Utilization
+            averageUtilization: 70
+  
+  # 클라우드 버스팅용 추가 replicas
+  cloudburstReplicas:
+    min: 0
+    max: 50
+  
+  env:
+    employeeServiceUrl: "http://employee_service:8001"
+    welfareServiceUrl: "http://welfare_service:8002"
+
+# Employee Service 설정
+employeeService:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    repository: kosa/employee_service
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8001
+  
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 30
+    targetCPUUtilizationPercentage: 70
+  
+  cloudburstReplicas:
+    min: 0
+    max: 100
+  
+  database:
+    host: mysql-master
+    port: 3306
+    user: root
+    password: password
+    database: kosa
+  
+  redis:
+    host: redis
+    port: 6379
+
+# Welfare Service 설정
+welfareService:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    repository: kosa/welfare_service
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8002
+  
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 30
+    targetCPUUtilizationPercentage: 70
+  
+  cloudburstReplicas:
+    min: 0
+    max: 100
+  
+  database:
+    host: mysql-master
+    port: 3306
+    user: root
+    password: password
+    database: kosa
+  
+  redis:
+    host: redis
+    port: 6379
+
+# Redis 설정 (Bitnami Redis Chart 사용)
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 1Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+# MySQL 설정 (Bitnami MySQL Chart 사용)
+mysql:
+  enabled: true
+  auth:
+    rootPassword: password
+    database: kosa
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+    configuration: |
+      [mysqld]
+      server-id=1
+      log-bin=mysql-bin
+      binlog-format=ROW
+      gtid-mode=ON
+      enforce-gtid-consistency=ON
+  secondary:
+    enabled: true
+    replicaCount: 2
+    persistence:
+      enabled: true
+      size: 10Gi
+
+# Ingress 설정
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: api.kosa.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: kosa-tls
+      hosts:
+        - api.kosa.com
+
+# Service Export (Kubernetes Federation)
+serviceExport:
+  enabled: true
+  services:
+    - employee_service
+    - welfare_service
+    - api-gateway
+
+# Service Import (Kubernetes Federation)
+serviceImport:
+  enabled: true
+  clusters:
+    - name: onprem
+      endpoint: https://onprem-k8s.example.com
+    - name: aws
+      endpoint: https://aws-eks.example.com
+
+# Node affinity (온프레미스 vs AWS)
+nodeAffinity:
+  onprem:
+    key: cluster-type
+    value: onprem
+  aws:
+    key: cluster-type
+    value: aws

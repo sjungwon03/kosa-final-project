@@ -1,0 +1,86 @@
+{{- if .Values.apiGateway.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: api-gateway
+    {{- if .Values.global.multiCluster.enabled }}
+    federation.k8s.io/multicluster-service: "true"
+    {{- end }}
+spec:
+  replicas: {{ .Values.apiGateway.replicaCount }}
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+        {{- if .Values.global.multiCluster.federation }}
+        federation.k8s.io/service-export: "true"
+        {{- end }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: api-gateway
+        image: "{{ .Values.global.imageRegistry }}{{ .Values.apiGateway.image.repository }}:{{ .Values.apiGateway.image.tag }}"
+        imagePullPolicy: {{ .Values.apiGateway.image.pullPolicy }}
+        {{- if .Values.global.harborEnabled }}
+        imagePullSecrets:
+        - name: harbor-registry-secret
+        {{- end }}
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        env:
+        - name: EMPLOYEE_SERVICE_URL
+          value: {{ .Values.apiGateway.env.employeeServiceUrl }}
+        - name: WELFARE_SERVICE_URL
+          value: {{ .Values.apiGateway.env.welfareServiceUrl }}
+        - name: ENV
+          value: {{ .Values.global.env }}
+        - name: CLUSTER_TYPE
+          {{- if .Values.global.cloudbursting.primaryCluster }}
+          value: {{ .Values.global.cloudbursting.primaryCluster }}
+          {{- else }}
+          value: "unknown"
+          {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          {{- toYaml .Values.apiGateway.resources | nindent 10 }}
+      {{- if .Values.nodeAffinity }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: {{ .Values.nodeAffinity.onprem.key }}
+                operator: In
+                values:
+                - {{ .Values.nodeAffinity.onprem.value }}
+      {{- end }}
+{{- end }}

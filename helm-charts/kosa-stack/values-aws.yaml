@@ -1,0 +1,93 @@
+# AWS EKS 클러스터용 Values (클라우드 버스팅)
+
+global:
+  env: production
+  namespace: kosa
+  cloudbursting:
+    enabled: true
+    primaryCluster: aws  # AWS에서는 AWS가 primary
+    secondaryCluster: onprem
+    scalingThreshold: 80
+    fallbackEnabled: true
+  harborEnabled: false  # AWS는 Harbor 사용 안함
+
+apiGateway:
+  replicaCount: 0  # 기본적으로 0, 트래픽 급증 시 확장
+  image:
+    repository: kosa/api-gateway
+    tag: latest
+  autoscaling:
+    enabled: true
+    minReplicas: 0
+    maxReplicas: 100  # AWS는 무제한 확장 가능
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+      service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+  
+  # AWS Fargate 사용 (노드 관리 없음)
+  executionMode: fargate
+
+employeeService:
+  replicaCount: 0
+  autoscaling:
+    minReplicas: 0
+    maxReplicas: 200
+
+welfareService:
+  replicaCount: 0
+  autoscaling:
+    minReplicas: 0
+    maxReplicas: 200
+
+# AWS RDS 사용 (MySQL MHA 대신)
+mysql:
+  enabled: false  # RDS 사용하므로 disabled
+
+# AWS ElastiCache 사용
+redis:
+  enabled: false  # ElastiCache 사용하므로 disabled
+
+# 외부 DB 설정 (VPN으로 온프레미스 DB 접근)
+externalServices:
+  mysql:
+    enabled: true
+    host: 10.0.3.10  # 온프레미스 MySQL Master (VPN)
+    port: 3306
+    user: root
+    passwordSecret: mysql-secret
+    database: kosa
+  
+  redis:
+    enabled: true
+    host: kosa-redis.xxx.apne1.cache.amazonaws.com
+    port: 6379
+
+nodeSelector:
+nodeAffinity:
+  aws:
+    key: cluster-type
+    value: aws
+    operator: In
+
+# AWS EKS 노드 그룹
+nodeSelector:
+  eks.amazonaws.com/nodegroup: kosa-workers
+
+# AWS 리전 설정
+awsRegion: ap-northeast-2
+
+# Fargate Profile 설정
+fargateProfiles:
+  - name: kosa-profile
+    selectors:
+      - namespace: kosa
+        labels:
+          app: api-gateway
+      - namespace: kosa
+        labels:
+          app: employee_service
+      - namespace: kosa
+        labels:
+          app: welfare_service
