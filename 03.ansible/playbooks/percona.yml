@@ -1,0 +1,99 @@
+---
+- name: Deploy Percona Operator for MySQL
+  hosts: control_plane[0]
+  become: yes
+  tasks:
+    - name: Create Percona namespace
+      kubernetes.core.k8s:
+        name: percona
+        api_version: v1
+        kind: Namespace
+        state: present
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+
+    - name: Deploy Percona Operator
+      kubernetes.core.k8s:
+        state: present
+        src: https://raw.githubusercontent.com/percona/percona-xtradb-cluster-operator/v1.19.1/deploy/bundle.yaml
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+
+    - name: Create Percona XtraDB Cluster
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: pxc.percona.com/v1
+          kind: PerconaXtraDBCluster
+          metadata:
+            name: pxc-cluster
+            namespace: percona
+          spec:
+            crVersion: 1.19.1
+            secretsName: pxc-backup
+            pxc:
+              size: 3
+              image: percona/percona-xtradb-cluster:8.0.44-35.1
+              autoRecovery: true
+              resources:
+                requests:
+                  memory: "2Gi"
+                  cpu: "1"
+                limits:
+                  memory: "4Gi"
+                  cpu: "2"
+              volumeSpec:
+                persistentVolumeClaim:
+                  resources:
+                    requests:
+                      storage: 60Gi
+              affinity:
+                podAntiAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    - labelSelector:
+                        matchLabels:
+                          app.kubernetes.io/name: pxc
+                          app.kubernetes.io/instance: pxc-cluster
+                      topologyKey: kubernetes.io/hostname
+            proxysql:
+              enabled: true
+              size: 2
+              image: percona/percona-xtradb-cluster-operator:1.19.1-proxysql
+              resources:
+                requests:
+                  memory: "512Mi"
+                  cpu: "500m"
+                limits:
+                  memory: "1Gi"
+                  cpu: "1"
+              volumeSpec:
+                persistentVolumeClaim:
+                  resources:
+                    requests:
+                      storage: 1Gi
+            haproxy:
+              enabled: true
+              size: 2
+              image: percona/percona-xtradb-cluster-operator:1.19.1-haproxy
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "250m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "500m"
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+
+    - name: Wait for Percona cluster to be ready
+      kubernetes.core.k8s_info:
+        api_version: pxc.percona.com/v1
+        kind: PerconaXtraDBCluster
+        name: pxc-cluster
+        namespace: percona
+      register: pxc_status
+      until: pxc_status.resources[0].status.state == 'ready'
+      retries: 60
+      delay: 10
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf

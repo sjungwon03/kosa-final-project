@@ -1,0 +1,52 @@
+[mysqld]
+user = mysql
+datadir = {{ mysql_data_dir }}
+log_error = {{ mysql_log_dir }}/error.log
+
+bind-address = {{ pxc_bind_address }}
+port = {{ pxc_port }}
+
+wsrep_provider = /usr/lib/galera3/libgalera_smm.so
+
+wsrep_cluster_name = {{ pxc_cluster_name }}
+wsrep_cluster_address = gcomm://{{ pxc_first_node_ip if not pxc_bootstrap else '' }}
+
+wsrep_node_name = {{ inventory_hostname }}
+wsrep_node_address = {{ ansible_host }}
+
+wsrep_sst_method = xtrabackup-v2
+wsrep_sst_auth = {{ pxc_sst_user }}:{{ pxc_sst_password }}
+
+wsrep_slave_threads = 4
+wsrep_certify_nonPK = 1
+wsrep_max_ws_size = 2G
+wsrep_max_ws_rows = 0
+
+pxc_strict_mode = ENFORCING
+
+innodb_autoinc_lock_mode = 2
+innodb_locking_fake_changes = 0
+innodb_log_file_size = 1G
+innodb_buffer_pool_size = {{ (ansible_memory_mb.real.total * 0.6) | int }}M
+innodb_flush_log_at_trx_commit = 0
+innodb_flush_method = O_DIRECT
+
+log_bin = binlog
+binlog_format = ROW
+expire_logs_days = 7
+sync_binlog = 0
+
+max_connections = 1000
+max_connect_errors = 100
+wait_timeout = 28800
+interactive_timeout = 28800
+
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+skip_name_resolve = 1
+
+[client]
+port = {{ pxc_port }}
+socket = /var/run/mysqld/mysqld.sock
+default-character-set = utf8mb4

@@ -1,0 +1,28 @@
+[all:vars]
+ansible_user=kosa
+ansible_ssh_private_key_file=~/.ssh/id_rsa
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+ansible_password=kosa1004
+
+pxc_version=8.0
+pxc_root_password=Change_Me_Secure_Password
+pxc_sst_user=sst_user
+pxc_sst_password=Change_Me_SST_Password
+pxc_cluster_name=pxc-cluster
+pxc_first_node_ip=172.16.30.10
+
+proxysql_mysql_servers=[
+  {address: '172.16.30.10', hostgroup_id: 0},
+  {address: '172.16.30.11', hostgroup_id: 0},
+  {address: '172.16.30.12', hostgroup_id: 0}
+]
+
+proxysql_mysql_users=[
+  {username: 'admin', password: 'admin', default_hostgroup: 0}
+]
+
+haproxy_backend_servers=[
+  {name: 'pxc-1', address: '172.16.30.10', port: 3306},
+  {name: 'pxc-2', address: '172.16.30.11', port: 3306},
+  {name: 'pxc-3', address: '172.16.30.12', port: 3306}
+]
