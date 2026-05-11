@@ -84,7 +84,12 @@
 - ProxySQL (172.16.20.25-26): MySQL 프록시
 - VIPs (172.16.20.30, 172.16.20.35): 고가용성 VIP
 
-**외부 연결**:
+**VLAN 설정**:
+```
+VLAN ID: 20
+Gateway: 172.16.20.1 (pfSense)
+IP Range: 172.16.20.0/24
+```
 ```
 애플리케이션 → HAProxy VIP (172.16.20.30:3306)
                 ├── 읽기 쿼리 분산
@@ -114,7 +119,12 @@ Action: Block
 **구성 요소**:
 - Percona (172.16.30.10-12): MySQL 클러스터
 
-**접근 제한**:
+**VLAN 설정**:
+```
+VLAN ID: 30
+Gateway: 172.16.30.1 (pfSense)
+IP Range: 172.16.30.0/24
+```
 ```
 외부 → Internal: Block (직접 접근 불가)
 DMZ → Internal: Allow (MySQL 포트만)
@@ -154,7 +164,7 @@ pxc-1 (172.16.30.10) ↔ pxc-2 (172.16.30.11) ↔ pxc-3 (172.16.30.12)
    └── IP: 172.16.20.1/24
    
 4. Services → DHCP Server → [VLAN20]
-   └── Enable (선택사항)
+   └── Disable (고정 IP 사용)
 ```
 
 **VLAN 30 (내부망)**:
@@ -424,36 +434,36 @@ ProxySQL (172.16.20.25) → Percona (172.16.30.10:3306)
 
 ### DMZ (172.16.20.x)
 
-| IP            | 용도            | 노드    | 설명              |
-|---------------|----------------|---------|-------------------|
-| 172.16.20.1   | Gateway        | pfSense | VLAN 20 Gateway   |
-| 172.16.20.20  | haproxy-1      | pve1    | HAProxy LB 1      |
-| 172.16.20.21  | haproxy-2      | pve2    | HAProxy LB 2      |
-| 172.16.20.25  | proxysql-1     | pve3    | ProxySQL 1        |
-| 172.16.20.26  | proxysql-2     | pve4    | ProxySQL 2        |
-| 172.16.20.30  | HAProxy VIP    | -       | HAProxy Virtual IP|
-| 172.16.20.35  | ProxySQL VIP   | -       | ProxySQL Virtual IP|
+| IP            | 용도            | 노드    | VLAN | 설명              |
+|---------------|----------------|---------|------|-------------------|
+| 172.16.20.1   | Gateway        | pfSense | 20   | VLAN 20 Gateway   |
+| 172.16.20.20  | haproxy-1      | pve1    | 20   | HAProxy LB 1      |
+| 172.16.20.21  | haproxy-2      | pve2    | 20   | HAProxy LB 2      |
+| 172.16.20.25  | proxysql-1     | pve3    | 20   | ProxySQL 1        |
+| 172.16.20.26  | proxysql-2     | pve4    | 20   | ProxySQL 2        |
+| 172.16.20.30  | HAProxy VIP    | -       | 20   | HAProxy Virtual IP|
+| 172.16.20.35  | ProxySQL VIP   | -       | 20   | ProxySQL Virtual IP|
 
 ### 내부망 (172.16.30.x)
 
-| IP            | 용도            | 노드    | 설명              |
-|---------------|----------------|---------|-------------------|
-| 172.16.30.1   | Gateway        | pfSense | VLAN 30 Gateway   |
-| 172.16.30.10  | pxc-1          | pve1    | Bootstrap 노드    |
-| 172.16.30.11  | pxc-2          | pve2    | Percona 노드 2    |
-| 172.16.30.12  | pxc-3          | pve3    | Percona 노드 3    |
+| IP            | 용도            | 노드    | VLAN | 설명              |
+|---------------|----------------|---------|------|-------------------|
+| 172.16.30.1   | Gateway        | pfSense | 30   | VLAN 30 Gateway   |
+| 172.16.30.10  | pxc-1          | pve1    | 30   | Bootstrap 노드    |
+| 172.16.30.11  | pxc-2          | pve2    | 30   | Percona 노드 2    |
+| 172.16.30.12  | pxc-3          | pve3    | 30   | Percona 노드 3    |
 
 ---
 
 ## 10. pfSense 방화벽 규칙 요약
 
-| Source         | Destination    | Port    | Action | 설명                      |
-|----------------|----------------|---------|--------|---------------------------|
-| Any            | DMZ            | 3306,3307,6033,8404 | Pass | 외부 → HAProxy/ProxySQL  |
-| DMZ            | Internal       | 3306    | Pass   | HAProxy/ProxySQL → Percona|
-| Internal       | DMZ            | Any     | Block  | Percona → DMZ 차단        |
-| Internal       | Internal       | 3306,4444,4567,4568 | Pass | Galera 복제              |
-| Any            | Internal       | Any     | Block  | 외부 → Percona 직접 차단  |
+| Source         | Destination    | VLAN    | Port    | Action | 설명                      |
+|----------------|----------------|---------|---------|--------|---------------------------|
+| Any            | DMZ (VLAN 20)  | 20      | 3306,3307,6033,8404 | Pass | 외부 → HAProxy/ProxySQL  |
+| DMZ (VLAN 20)  | Internal (VLAN 30) | 20→30 | 3306    | Pass   | HAProxy/ProxySQL → Percona|
+| Internal (VLAN 30) | DMZ (VLAN 20) | 30→20 | Any     | Block  | Percona → DMZ 차단        |
+| Internal (VLAN 30) | Internal (VLAN 30) | 30 | 3306,4444,4567,4568 | Pass | Galera 복제              |
+| Any            | Internal (VLAN 30) | - | Any     | Block  | 외부 → Percona 직접 차단  |
 
 ---
 

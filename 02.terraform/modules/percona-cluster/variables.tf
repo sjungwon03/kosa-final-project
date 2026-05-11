@@ -20,6 +20,12 @@ variable "template_vmid" {
   default     = 9001
 }
 
+variable "clone_node" {
+  description = "Node where the template is located"
+  type        = string
+  default     = ""
+}
+
 variable "ciuser" {
   description = "Cloud-init username (kosa)"
   type        = string
@@ -169,16 +175,34 @@ variable "percona_ip_start" {
   default     = 10
 }
 
+variable "percona_vmid_start" {
+  description = "Starting VM ID for Percona nodes"
+  type        = number
+  default     = 101
+}
+
 variable "haproxy_ip_start" {
   description = "Starting IP for HAProxy nodes in DMZ"
   type        = number
   default     = 20
 }
 
+variable "haproxy_vmid_start" {
+  description = "Starting VM ID for HAProxy nodes"
+  type        = number
+  default     = 111
+}
+
 variable "proxysql_ip_start" {
   description = "Starting IP for ProxySQL nodes in DMZ"
   type        = number
   default     = 25
+}
+
+variable "proxysql_vmid_start" {
+  description = "Starting VM ID for ProxySQL nodes"
+  type        = number
+  default     = 121
 }
 
 variable "ha_enabled" {

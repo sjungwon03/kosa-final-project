@@ -28,9 +28,10 @@ module "percona" {
   source = "../proxmox-vm"
   count  = var.percona_nodes
 
-  vm_name      = local.percona_nodes[count.index].name
-  target_node  = var.proxmox_nodes[local.percona_nodes[count.index].node_idx]
-  template_vmid = var.template_vmid
+  vm_name       = local.percona_nodes[count.index].name
+  target_node   = var.proxmox_nodes[local.percona_nodes[count.index].node_idx]
+  template_name = var.template_name
+  vmid          = var.percona_vmid_start + count.index
 
   cpu_cores    = var.percona_cpu
   memory       = var.percona_memory
@@ -59,9 +60,10 @@ module "haproxy" {
   source = "../proxmox-vm"
   count  = var.haproxy_nodes
 
-  vm_name      = local.haproxy_nodes[count.index].name
-  target_node  = var.proxmox_nodes[local.haproxy_nodes[count.index].node_idx]
-  template_vmid = var.template_vmid
+  vm_name       = local.haproxy_nodes[count.index].name
+  target_node   = var.proxmox_nodes[local.haproxy_nodes[count.index].node_idx]
+  template_name = var.template_name
+  vmid          = var.haproxy_vmid_start + count.index
 
   cpu_cores    = var.haproxy_cpu
   memory       = var.haproxy_memory
@@ -90,9 +92,10 @@ module "proxysql" {
   source = "../proxmox-vm"
   count  = var.proxysql_nodes
 
-  vm_name      = local.proxysql_nodes[count.index].name
-  target_node  = var.proxmox_nodes[local.proxysql_nodes[count.index].node_idx]
-  template_vmid = var.template_vmid
+  vm_name       = local.proxysql_nodes[count.index].name
+  target_node   = var.proxmox_nodes[local.proxysql_nodes[count.index].node_idx]
+  template_name = var.template_name
+  vmid          = var.proxysql_vmid_start + count.index
 
   cpu_cores    = var.proxysql_cpu
   memory       = var.proxysql_memory

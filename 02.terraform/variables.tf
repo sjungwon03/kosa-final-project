@@ -39,6 +39,12 @@ variable "template_vmid" {
   default     = 9001
 }
 
+variable "clone_node" {
+  description = "Node where the template is located"
+  type        = string
+  default     = ""
+}
+
 variable "template_name" {
   description = "VM template name"
   type        = string
@@ -81,6 +87,12 @@ variable "percona_disk_size" {
   default     = 60
 }
 
+variable "percona_vmid_start" {
+  description = "Starting VM ID for Percona nodes"
+  type        = number
+  default     = 101
+}
+
 variable "haproxy_nodes" {
   description = "Number of HAProxy nodes"
   type        = number
@@ -105,6 +117,12 @@ variable "haproxy_disk_size" {
   default     = 20
 }
 
+variable "haproxy_vmid_start" {
+  description = "Starting VM ID for HAProxy nodes"
+  type        = number
+  default     = 111
+}
+
 variable "proxysql_nodes" {
   description = "Number of ProxySQL nodes"
   type        = number
@@ -127,6 +145,12 @@ variable "proxysql_disk_size" {
   description = "Disk size GB for ProxySQL nodes"
   type        = number
   default     = 30
+}
+
+variable "proxysql_vmid_start" {
+  description = "Starting VM ID for ProxySQL nodes"
+  type        = number
+  default     = 121
 }
 
 variable "storage" {

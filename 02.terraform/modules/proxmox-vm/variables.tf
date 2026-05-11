@@ -3,6 +3,12 @@ variable "vm_name" {
   type        = string
 }
 
+variable "vmid" {
+  description = "VM ID"
+  type        = number
+  default     = 0
+}
+
 variable "target_node" {
   description = "Proxmox node to create VM on"
   type        = string
@@ -18,6 +24,12 @@ variable "template_vmid" {
   description = "Template VM ID (9001)"
   type        = number
   default     = 9001
+}
+
+variable "clone_node" {
+  description = "Node where the template is located"
+  type        = string
+  default     = ""
 }
 
 variable "cpu_cores" {

@@ -2,33 +2,47 @@ terraform {
   required_providers {
     proxmox = {
       source  = "telmate/proxmox"
-      version = ">= 2.9.0"
+      version = "3.0.2-rc07"
     }
+
   }
 }
 
 resource "proxmox_vm_qemu" "vm" {
   name        = var.vm_name
   target_node = var.target_node
+  vmid        = var.vmid != 0 ? var.vmid : null
 
-  clone       = var.template_vmid
-  full_clone  = true
+  clone      = var.template_name
+  full_clone = true
 
-  cores   = var.cpu_cores
-  sockets = 1
+  boot = "order=virtio0;ide2"
+
   memory  = var.memory
+
+  cpu {
+    cores   = var.cpu_cores
+    sockets = 1
+  }
 
   agent = 1
 
   disk {
-    slot    = 0
+    slot    = "virtio0"
     type    = "disk"
     storage = var.storage
     size    = "${var.disk_size}G"
-    iothread = 1
+    iothread = true
+  }
+
+  disk {
+    slot    = "ide2"
+    type    = "cloudinit"
+    storage = var.storage
   }
 
   network {
+    id     = 0
     model  = "virtio"
     bridge = var.network_bridge
     tag    = var.vlan_tag
@@ -42,7 +56,7 @@ resource "proxmox_vm_qemu" "vm" {
 
   nameserver = join(";", var.dns_servers)
 
-  onboot = var.onboot
+  start_at_node_boot = var.onboot
 
   tags = join(";", var.tags)
 

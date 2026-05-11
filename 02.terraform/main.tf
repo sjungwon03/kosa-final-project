@@ -4,11 +4,11 @@ terraform {
   required_providers {
     proxmox = {
       source  = "telmate/proxmox"
-      version = ">= 2.9.0"
+      version = "3.0.2-rc07"
     }
     local = {
       source  = "hashicorp/local"
-      version = ">= 2.0.0"
+      version = ">= 2.8.0"
     }
   }
 
@@ -29,22 +29,25 @@ module "percona_cluster" {
 
   cluster_name  = var.cluster_name
   proxmox_nodes = var.proxmox_nodes
-  template_vmid = var.template_vmid
+  template_name = var.template_name
 
-  percona_nodes     = var.percona_nodes
-  percona_cpu       = var.percona_cpu
-  percona_memory    = var.percona_memory
-  percona_disk_size = var.percona_disk_size
+  percona_nodes        = var.percona_nodes
+  percona_cpu          = var.percona_cpu
+  percona_memory       = var.percona_memory
+  percona_disk_size    = var.percona_disk_size
+  percona_vmid_start   = var.percona_vmid_start
 
-  haproxy_nodes     = var.haproxy_nodes
-  haproxy_cpu       = var.haproxy_cpu
-  haproxy_memory    = var.haproxy_memory
-  haproxy_disk_size = var.haproxy_disk_size
+  haproxy_nodes        = var.haproxy_nodes
+  haproxy_cpu          = var.haproxy_cpu
+  haproxy_memory       = var.haproxy_memory
+  haproxy_disk_size    = var.haproxy_disk_size
+  haproxy_vmid_start   = var.haproxy_vmid_start
 
-  proxysql_nodes     = var.proxysql_nodes
-  proxysql_cpu       = var.proxysql_cpu
-  proxysql_memory    = var.proxysql_memory
-  proxysql_disk_size = var.proxysql_disk_size
+  proxysql_nodes       = var.proxysql_nodes
+  proxysql_cpu         = var.proxysql_cpu
+  proxysql_memory      = var.proxysql_memory
+  proxysql_disk_size   = var.proxysql_disk_size
+  proxysql_vmid_start  = var.proxysql_vmid_start
 
   storage = var.storage
 
