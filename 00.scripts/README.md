@@ -2,12 +2,12 @@
 
 가상 서버 기본 템플릿 구성을 위한 쉘 스크립트 모음
 
-- create-ubuntu-template.sh
+- create-ubuntu-2404-base.sh
 - force-destroy-vm.sh
 
 
 
-## create-ubuntu-template.sh
+## create-ubuntu-2404-base.sh
 
 Ubuntu 24.04 cloud-init 베이스 템플릿(VMID 9000) 생성
 
@@ -19,8 +19,8 @@ Ubuntu 24.04 cloud-init 베이스 템플릿(VMID 9000) 생성
 **실행**
 ```bash
 # base 템플릿 생성
-bash create-ubuntu-template.sh
-bash create-ubuntu-template.sh 9000
+bash create-ubuntu-2404-base.sh
+bash create-ubuntu-2404-base.sh 9000
 
 # 다른 터미널에서 진행 상황 확인 (VM 부팅 후)
 qm agent 9000 exec -- cat /var/log/cloud-init-output.log
