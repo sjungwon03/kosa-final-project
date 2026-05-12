@@ -1,0 +1,32 @@
+---
+- name: Add ProxySQL apt repository
+  apt_key:
+    url: https://repo.proxysql.com/ProxySQL/proxysql-2.5.x/repo_pub_key
+    state: present
+
+- name: Add ProxySQL repository
+  apt_repository:
+    repo: "deb https://repo.proxysql.com/ProxySQL/proxysql-2.5.x/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }} ./"
+    state: present
+    filename: proxysql
+
+- name: Install ProxySQL
+  apt:
+    name: proxysql
+    state: present
+    update_cache: yes
+
+- name: Configure ProxySQL
+  template:
+    src: proxysql.cnf.j2
+    dest: /etc/proxysql.cnf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart ProxySQL
+
+- name: Start ProxySQL
+  systemd:
+    name: proxysql
+    enabled: yes
+    state: started

@@ -1,0 +1,77 @@
+datadir="/var/lib/proxysql"
+
+admin_variables=
+{
+    admin_credentials="{{ proxysql_admin_user }}:{{ proxysql_admin_password }}"
+    mysql_ifaces="0.0.0.0:{{ proxysql_admin_port }}"
+    web_enabled=true
+    web_port=6080
+}
+
+mysql_variables=
+{
+    threads=4
+    max_connections=2048
+    default_query_delay=0
+    default_query_timeout=36000000
+    have_compress=true
+    poll_timeout=2000
+    interfaces="0.0.0.0:{{ proxysql_mysql_port }}"
+    default_schema="information_schema"
+    stacksize=1048576
+    server_version="8.0.0"
+    connect_timeout_server=3000
+    monitor_username="monitor"
+    monitor_password="monitor"
+    monitor_history=600000
+    monitor_connect_interval=60000
+    monitor_ping_interval=10000
+    monitor_read_only_interval=1500
+    monitor_read_only_timeout=500
+    ping_interval_server_msec=120000
+    ping_timeout_server=500
+    commands_stats=true
+    sessions_sort=true
+    connect_retries_on_failure=10
+}
+
+mysql_servers=
+{
+{% for server in mysql_servers %}
+    {
+        address="{{ server.address }}"
+        port={{ server.port | default(3306) }}
+        hostgroup_id={{ server.hostgroup_id | default(0) }}
+        status="{{ server.status | default('ONLINE') }}"
+        weight={{ server.weight | default(1) }}
+        compression={{ server.compression | default(0) }}
+        max_connections={{ server.max_connections | default(1000) }}
+    }{% if not loop.last %},{% endif %}
+{% endfor %}
+}
+
+mysql_users=
+{
+{% for user in mysql_users %}
+    {
+        username="{{ user.username }}"
+        password="{{ user.password }}"
+        default_hostgroup={{ user.default_hostgroup | default(0) }}
+        active={{ user.active | default(1) }}
+        max_connections={{ user.max_connections | default(1000) }}
+    }{% if not loop.last %},{% endif %}
+{% endfor %}
+}
+
+mysql_query_rules=
+{
+{% for rule in mysql_query_rules %}
+    {
+        rule_id={{ rule.rule_id }}
+        active={{ rule.active | default(1) }}
+        match_pattern="{{ rule.match_pattern }}"
+        destination_hostgroup={{ rule.destination_hostgroup }}
+        apply={{ rule.apply | default(1) }}
+    }{% if not loop.last %},{% endif %}
+{% endfor %}
+}
