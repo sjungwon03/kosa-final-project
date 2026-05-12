@@ -1,5 +1,4 @@
-# start ...
-## 보안 가이드 나열 (중요도 순)
+보안 가이드 나열 (중요도 순)
 1. OS(linux)
 - proxmox 노드 자체에서 돌아가는 jenkins(CI/CD), k8s node
 root 원격 접속 제한, passwd 복잡성 설정, ip forwarding 제어(커널 파라미터 보안), 키 기반 인증 등
