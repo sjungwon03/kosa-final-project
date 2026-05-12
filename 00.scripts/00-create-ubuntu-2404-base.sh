@@ -38,7 +38,10 @@
 #              $TERM → vt100 고정 (virt-customize 게스트 쉘 변수 확장 방지)
 # [2026-05-12] qm agent exec 제거: Proxmox에서 인자 전달 불가 (400 too many arguments)
 #              cloud-init clean / machine-id 초기화 → Packer SSH 프로비저너로 이동
+# [2026-05-12] TODO 추가: Vault 연동 시 ciuser/cipassword 하드코딩 제거
+# [2026-05-12] set -euo pipefail 주석 추가
 
+# -e: 명령어 실패 시 즉시 종료 / -u: 미선언 변수 사용 시 오류 / -o pipefail: 파이프 중간 실패도 오류 처리
 set -euo pipefail
 
 # libguestfs 환경 변수 (Proxmox 호스트 권한 에러 방지)
@@ -136,6 +139,7 @@ qm set "${VMID}" --scsihw virtio-scsi-single \
 # 부가 설정
 qm disk resize "${VMID}" scsi0 10G
 qm set "${VMID}" --ide2 "${STORAGE_POOL}:cloudinit"
+# TODO: Vault 구성 시 → qm set "${VMID}" --ciuser "${CIUSER}" --cipassword "${CIPASSWORD}" --ipconfig0 ip=dhcp
 qm set "${VMID}" --ciuser kosa --cipassword kosa1004 --ipconfig0 ip=dhcp
 qm set "${VMID}" --cicustom "user=local:snippets/$(basename ${SNIPPET_FILE})"
 qm set "${VMID}" --boot c --bootdisk scsi0
