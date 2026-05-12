@@ -39,9 +39,13 @@ variable "ssh_password" {
   sensitive = true
 }
 
-variable "ansible_public_key" {
+variable "ansible_public_key_file" {
   type    = string
-  default = ""
+  default = "ansible.pub"
+}
+
+locals {
+  ansible_public_key = file(var.ansible_public_key_file)
 }
 
 variable "template_vm_id" {
@@ -98,6 +102,9 @@ build {
     inline = [
       "sudo cloud-init status --wait || true",
       "sudo timedatectl set-timezone Asia/Seoul",
+      # 부팅 시 네트워크 대기 서비스 비활성화 (cloud-init 환경에서 2분 타임아웃 발생)
+      # 주의: 네트워크 의존 서비스가 network ready 전에 뜰 수 있음 → 문제 발생 시 아래 줄 제거 후 재빌드
+      # "sudo systemctl disable systemd-networkd-wait-online.service",
       "sudo apt-get update",
       "sudo apt-get install -y curl wget git vim net-tools auditd",
       "sudo systemctl disable auditd",
@@ -124,7 +131,7 @@ build {
 
   provisioner "shell" {
     environment_vars = [
-      "ANSIBLE_KEY=${var.ansible_public_key}",
+      "ANSIBLE_KEY=${local.ansible_public_key}",
       "SSH_USER=${var.ssh_username}"
     ]
     inline = [

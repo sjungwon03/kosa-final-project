@@ -3,19 +3,27 @@
 - VMID 9000 (ubuntu-2404-base) 템플릿을 클론하여 Ansible 관리용 템플릿 생성
 - ISO 부팅 없이 cloud-init 기반 베이스 템플릿을 클론해서 구성하는 방식
 
-**파이프라인**
-- 00.scripts (9000 생성)
-- 01.packer (9005 생성)
-- 02.terraform (VM 프로비저닝)
+**파이프라인 (실행 순서)**
+
+| 순서 | 폴더 | 내용 | 실행 위치 |
+|---|---|---|---|
+| 1 | 00.scripts | 베이스 템플릿(9000) 생성 | Proxmox 호스트 |
+| 2 | **01.packer** | **공통 템플릿(9005) 생성** | **빌드 서버** |
+| 3 | 03.ansible | 컨트롤 노드 VM 생성 | Proxmox 호스트 |
+| 4 | 02.terraform | VM 프로비저닝 | 컨트롤 노드 |
+| 5 | 03.ansible | Ansible 플레이북 실행 | 컨트롤 노드 |
 
 **디렉토리 구성**
 ```
 01.packer/
-├── ubuntu-2404-common/                # Ubuntu 24.04 LTS
+├── ubuntu-2404-common/
 │   ├── packer-ubuntu-template.pkr.hcl
-│   ├── ssh-credentials.pkrvars.hcl
+│   ├── ansible.pub                        # 컨트롤 노드 공개키 (gitignore 대상)
+│   ├── ssh-credentials.pkrvars.hcl        # SSH 계정, 키 파일 경로 (gitignore 대상)
+│   ├── ssh-credentials.pkrvars.hcl.example
 │   └── http/
-└── credentials.pkr.hcl                # Proxmox API 접속 정보
+├── credentials.pkr.hcl                    # Proxmox API 접속 정보 (gitignore 대상)
+└── credentials.pkr.hcl.example
 ```
 
 
@@ -63,7 +71,13 @@
 - sudo: NOPASSWD
 
 ### 사전 조건
-- VMID 9000 (ubuntu-2404-base) 템플릿 존재 (`00.scripts/create-ubuntu-2404-base.sh` 실행)
+- VMID 9000 (ubuntu-2404-base) 템플릿 존재 (`00.scripts/00-create-ubuntu-2404-base.sh` 실행)
+- Ansible 공개키 생성 및 배치 (노트북 또는 빌드 서버에서)
+  ```bash
+  ssh-keygen -t ed25519 -f ~/.ssh/ansible-control -N "" -C "ansible@control"
+  cp ~/.ssh/ansible-control.pub ubuntu-2404-common/ansible.pub
+  ```
+  > 개인키(`ansible-control`)는 나중에 컨트롤 노드 생성 후 복사: `scp ~/.ssh/ansible-control control@172.16.30.10:~/.ssh/`
 - 빌드 서버 → Proxmox 호스트 root SSH 키 인증 설정 (post-processor `qm` 실행에 필요)
   ```bash
   ssh-copy-id root@192.168.34.4
@@ -134,13 +148,7 @@ grep -A2 -B2 "exit\|error\|Error\|failed\|E:" /tmp/packer-debug.log | tail -50
 # 빌드 중 생성된 VM 목록 확인
 qm list
 
-# cloud-init 완료 여부 확인 (Packer SSH 접속 전 hang 시)
-qm agent 9005 exec -- cat /var/log/cloud-init-output.log
-
-# apt 진행 중 dpkg lock으로 멈춘 경우 확인
-qm agent 9005 exec -- cat /var/run/lock/dpkg-lock-frontend
-
-# VM 콘솔 직접 접속 (SSH 안 될 때)
+# cloud-init / apt 진행 상태 확인 (콘솔 직접 접속)
 qm terminal 9005
 ```
 
