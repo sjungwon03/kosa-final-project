@@ -350,3 +350,9 @@ override.tf.json
 terraform.rc
 
 # End of https://www.toptal.com/developers/gitignore/api/terraform,ansible,node,python
+# Packer 민감 정보
+*.pkrvars.hcl
+credentials.pkr.hcl
+
+# Claude 작업 현황
+CLAUDE.md
