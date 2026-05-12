@@ -266,7 +266,7 @@ celerybeat.pid
 
 # Environments
 .venv
-env/
+/env/
 venv/
 ENV/
 env.bak/
@@ -353,6 +353,17 @@ terraform.rc
 # Packer 민감 정보
 *.pkrvars.hcl
 credentials.pkr.hcl
+ansible.pub
 
 # Claude 작업 현황
 CLAUDE.md
+
+# Ansible 인증서 (환경별 민감 정보)
+03.ansible/workspace/work-*/certs/
+!03.ansible/workspace/work-*/certs/.gitkeep
+
+# Ansible 임시 문서
+03.ansible/임시.md
+
+# Ansible env
+03.ansible/.env
