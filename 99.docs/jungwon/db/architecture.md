@@ -26,8 +26,8 @@ VM 기반 Percona XtraDB Cluster 구성으로 Proxmox HA 설정 포함
 │                      HAProxy 로드밸런서 (DMZ)                   │
 │                   VIP: 172.16.20.30                             │
 │         ┌──────────────────────────────────────────┐            │
-│         │ haproxy-1 (172.16.20.20) - pve1          │            │
-│         │ haproxy-2 (172.16.20.21) - pve2          │            │
+│         │ haproxy-1 (172.16.20.20) - kosa21          │            │
+│         │ haproxy-2 (172.16.20.21) - kosa22          │            │
 │         └──────────────────────────────────────────┘            │
 │                  Port 3306 (Read) / 3307 (Write)                │
 │           Stats Interface: Port 8404                            │
@@ -37,8 +37,8 @@ VM 기반 Percona XtraDB Cluster 구성으로 Proxmox HA 설정 포함
 │                      ProxySQL Layer (DMZ)                       │
 │                   VIP: 172.16.20.35                             │
 │         ┌──────────────────────────────────────────┐            │
-│         │ proxysql-1 (172.16.20.25) - pve3         │            │
-│         │ proxysql-2 (172.16.20.26) - pve4         │            │
+│         │ proxysql-1 (172.16.20.25) - kosa23         │            │
+│         │ proxysql-2 (172.16.20.26) - kosa24         │            │
 │         └──────────────────────────────────────────┘            │
 │         Admin Interface: Port 6032                              │
 │         MySQL Proxy: Port 6033                                  │
@@ -54,9 +54,9 @@ VM 기반 Percona XtraDB Cluster 구성으로 Proxmox HA 설정 포함
 │                Percona XtraDB Cluster (3 Nodes)                 │
 │                   (Internal VLAN 30)                             │
 │         ┌──────────────────────────────────────────┐            │
-│         │ pxc-1 (172.16.30.10) - pve1 [Bootstrap]  │            │
-│         │ pxc-2 (172.16.30.11) - pve2              │            │
-│         │ pxc-3 (172.16.30.12) - pve3              │            │
+│         │ pxc-1 (172.16.30.10) - kosa21 [Bootstrap]  │            │
+│         │ pxc-2 (172.16.30.11) - kosa22              │            │
+│         │ pxc-3 (172.16.30.12) - kosa23              │            │
 │         └──────────────────────────────────────────┘            │
 │                    Galera Cluster Replication                   │
 │                        Port 3306                                 │
@@ -77,8 +77,8 @@ VM 기반 Percona XtraDB Cluster 구성으로 Proxmox HA 설정 포함
 │                      HAProxy Load Balancer                      │
 │                   (DMZ VLAN 20)                                  │
 │         ┌──────────────────────────────────────────┐            │
-│         │ haproxy-1 (172.16.20.20) - pve1          │            │
-│         │ haproxy-2 (172.16.20.21) - pve2          │            │
+│         │ haproxy-1 (172.16.20.20) - kosa21          │            │
+│         │ haproxy-2 (172.16.20.21) - kosa22          │            │
 │         └──────────────────────────────────────────┘            │
 │                  Port 3306 (Read) / 3307 (Write)                │
 └─────────────────────────────────────────────────────────────────┘
@@ -87,8 +87,8 @@ VM 기반 Percona XtraDB Cluster 구성으로 Proxmox HA 설정 포함
 │                      ProxySQL Layer                             │
 │                   (DMZ VLAN 20)                                  │
 │         ┌──────────────────────────────────────────┐            │
-│         │ proxysql-1 (172.16.20.25) - pve3         │            │
-│         │ proxysql-2 (172.16.20.26) - pve4         │            │
+│         │ proxysql-1 (172.16.20.25) - kosa23         │            │
+│         │ proxysql-2 (172.16.20.26) - kosa24         │            │
 │         └──────────────────────────────────────────┘            │
 │                    Port 6033 (MySQL Proxy)                      │
 └─────────────────────────────────────────────────────────────────┘
@@ -97,9 +97,9 @@ VM 기반 Percona XtraDB Cluster 구성으로 Proxmox HA 설정 포함
 │                Percona XtraDB Cluster (3 Nodes)                 │
 │                   (Internal VLAN 30)                             │
 │         ┌──────────────────────────────────────────┐            │
-│         │ pxc-1 (172.16.30.10) - pve1 [Bootstrap]  │            │
-│         │ pxc-2 (172.16.30.11) - pve2              │            │
-│         │ pxc-3 (172.16.30.12) - pve3              │            │
+│         │ pxc-1 (172.16.30.10) - kosa21 [Bootstrap]  │            │
+│         │ pxc-2 (172.16.30.11) - kosa22              │            │
+│         │ pxc-3 (172.16.30.12) - kosa23              │            │
 │         └──────────────────────────────────────────┘            │
 │                    Galera Cluster Replication                   │
 │                        Port 3306                                 │
@@ -112,7 +112,7 @@ VM 기반 Percona XtraDB Cluster 구성으로 Proxmox HA 설정 포함
 
 ### 1. Proxmox 클러스터 (4 Nodes)
 
-**노드**: pve1, pve2, pve3, pve4
+**노드**: kosa21, kosa22, kosa23, kosa24
 
 **기능**:
 - HA Group: `percona-ha`
@@ -129,9 +129,9 @@ VM 기반 Percona XtraDB Cluster 구성으로 Proxmox HA 설정 포함
 - Network: VLAN 30, VirtIO 드라이버
 
 **노드 분산**:
-- pxc-1: pve1 (Bootstrap 노드)
-- pxc-2: pve2
-- pxc-3: pve3
+- pxc-1: kosa21 (Bootstrap 노드)
+- pxc-2: kosa22
+- pxc-3: kosa23
 
 **기술 스택**:
 - Percona XtraDB Cluster 8.0
@@ -147,8 +147,8 @@ VM 기반 Percona XtraDB Cluster 구성으로 Proxmox HA 설정 포함
 - Network: VLAN 20 (DMZ), VirtIO 드라이버
 
 **노드 분산**:
-- haproxy-1: pve1
-- haproxy-2: pve2
+- haproxy-1: kosa21
+- haproxy-2: kosa22
 
 **로드밸런싱 구성**:
 - Port 3306: 읽기 쿼리 (Round Robin)
@@ -165,8 +165,8 @@ VM 기반 Percona XtraDB Cluster 구성으로 Proxmox HA 설정 포함
 - Network: VLAN 20 (DMZ), VirtIO 드라이버
 
 **노드 분산**:
-- proxysql-1: pve3
-- proxysql-2: pve4
+- proxysql-1: kosa23
+- proxysql-2: kosa24
 
 **기능**:
 - 쿼리 라우팅
@@ -229,7 +229,7 @@ VLAN 30 → VLAN 10/20/30: Block (필요시 격리)
 **설정**:
 ```bash
 # HA 그룹 생성
-ha-manager add-group percona-ha --nodes pve1,pve2,pve3,pve4 --restricted 1
+ha-manager add-group percona-ha --nodes kosa21,kosa22,kosa23,kosa24 --restricted 1
 
 # VM을 HA에 추가
 ha-manager add vmid:100 --group percona-ha --state started
