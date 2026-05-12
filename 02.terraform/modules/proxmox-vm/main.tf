@@ -14,9 +14,9 @@ resource "proxmox_vm_qemu" "vm" {
   vmid        = var.vmid != 0 ? var.vmid : null
 
   clone      = var.template_name
-  full_clone = false
+  full_clone = true
 
-  boot = "order=virtio0"
+  boot = "order=scsi0;ide2"
 
   memory  = var.memory
 
@@ -25,14 +25,20 @@ resource "proxmox_vm_qemu" "vm" {
     sockets = 1
   }
 
-  agent = 1
+  agent = 0
 
   disk {
-    slot    = "virtio0"
+    slot    = "scsi0"
     type    = "disk"
     storage = var.storage
     size    = "${var.disk_size}G"
     iothread = true
+  }
+
+  disk {
+    slot    = "ide2"
+    type    = "cloudinit"
+    storage = var.storage
   }
 
   network {
