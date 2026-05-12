@@ -1,1 +1,33 @@
-# ...
+# start ...
+## 보안 가이드 나열 (중요도 순)
+1. OS(linux)
+proxmox 노드 자체에서 돌아가는 jenkins(CI/CD), k8s노드**
+root 원격 접속 제한, passwd 복잡성 설정, ip forwarding 제어(커널 파라미터 보안), 키 기반 인증 등
+
+2. DB
+pxc, mariadb cluster
+DB 원격 접속 제한, 계정별 권한 분리, TLS(클러스터간 통신 암호화) 등
+
+3. Web&API
+gitlab API, argocd, k8s API server
+TLS/SSL 암호화 적용 (HTTPS), api 인증 토큰 관리 (secret 관리), rate limiting (과도한 api 요청 차단)
+
+4. WAS
+tomcat, node.js, python, jenkins, gitlab
+실행 계정 권한(root 금지), 에러 페이지에서 서버 정보 노출 방지(1. 버전(cve기반공격방지) / 2. 인프라 구조)
+만약 harbor 사용 시** dockerfile에서 root 계정 사용 금지(실행 방지용) + 이미지 경량화 관련 가이드 작성 필수
+ex) jenkins나 harbor같은 툴들은 기본적으로 상세 에러를 보여주는 경우가 많습니다.
+이를 custom error page로 대체하거나, nginx ingress 설정에서 server_tokens off 옵션으로 대응해야 합니다.
+
+5. infra&network (추가 보안 가이드)
+proxmox 가상화 보안
+proxmox 내부의 방화벽을 사용해 동일한 네트워크 브릿지 내 vm/lxc간의 무분별한 접근을 차단해야 함.
+ex) 각 vm/lxc(linux container)에 필요한 포트 말고는 모두 default drop으로 설정해 통신을 최소화해야 합니다.
+
+k8s cluster 통신 보안
+kubernetes의 기본 network 정책을 사용해 특정 네임스페이스나 라벨을 가진 파드들끼리만 통신하도록 제한할 필요가 있음.
+ex) db(k8s) 파드는 ingress(nginx) 정책으로 백엔드 파드의 요청만 허용하고, 외부 서비스가 직접 접근하는 것을 막도록 해야 합니다.
+
+
+## 보안 가이드 내부 요소
+항목 설명 — 설정 방법 — 공격 가능성 — 진단 기준 — 진단 방법(예시) — 기반시설기준항목
