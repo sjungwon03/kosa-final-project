@@ -59,7 +59,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu" {
     user_account {
       username = "kosa"
       password = var.vm_password
-      keys     = length(var.ssh_public_key) > 0 ? var.ssh_public_key : compact([try(trimspace(file("~/.ssh/ansible-control.pub")), "")])
+      keys     = length(var.ssh_public_key) > 0 ? var.ssh_public_key : compact([try(trimspace(file(pathexpand("~/.ssh/ansible-control.pub"))), "")])
     }
   }
 
