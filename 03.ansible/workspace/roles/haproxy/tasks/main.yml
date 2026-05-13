@@ -1,0 +1,38 @@
+---
+# roles/haproxy/tasks/main.yml
+
+- name: HAProxy 및 Keepalived 설치
+  apt:
+    name:
+      - haproxy
+      - keepalived
+    state: present
+    update_cache: yes
+
+- name: HAProxy 설정 파일 적용
+  template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+  notify: restart haproxy
+
+- name: Keepalived 설정 파일 적용
+  template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+  notify: restart keepalived
+
+- name: 커널 비로컬 바인딩 허용 (VIP 바인딩용)
+  sysctl:
+    name: net.ipv4.ip_nonlocal_bind
+    value: '1'
+    state: present
+  # value: '1' 인데 괄호 오타 수정
+
+- name: 서비스 활성화 및 시작
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - haproxy
+    - keepalived

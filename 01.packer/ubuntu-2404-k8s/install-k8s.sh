@@ -1,7 +1,9 @@
 #!/bin/bash
 set -e
 
-K8S_VERSION="1.32"
+# TODO: K8S_VERSION을 packer-k8s-template.pkr.hcl의 variable로 빼고
+#       environment_vars = ["K8S_VERSION=${var.k8s_version}"]로 주입하도록 변경
+K8S_VERSION="${K8S_VERSION:-1.32}"
 
 # swap 비활성화
 sudo swapoff -a

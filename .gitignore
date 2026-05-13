@@ -329,8 +329,6 @@ crash.*.log
 # password, private keys, and other secrets. These should not be part of version
 # control as they are data points which are potentially sensitive and subject
 # to change depending on the environment.
-*.tfvars
-*.tfvars.json
 
 # Ignore override files as they are usually used to override resources locally and so
 # are not checked in
@@ -355,15 +353,19 @@ terraform.rc
 credentials.pkr.hcl
 ansible.pub
 
-# Claude 작업 현황
-CLAUDE.md
+# Terraform 인증 정보
+credentials.auto.tfvars
 
 # Ansible 인증서 (환경별 민감 정보)
-03.ansible/workspace/work-*/certs/
-!03.ansible/workspace/work-*/certs/.gitkeep
-
-# Ansible 임시 문서
-03.ansible/임시.md
+03.ansible/workspace/inventories/*/certs/
+!03.ansible/workspace/inventories/*/certs/.gitkeep
 
 # Ansible env
 03.ansible/.env
+
+# LLM
+CLAUDE.md
+GEMINI.md
+
+# 개인 문서
+임시.md

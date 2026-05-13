@@ -1,0 +1,43 @@
+---
+# k8s_common: Packer에서 설치된 바이너리 활성화 + 공통 검증
+# 대상: k8s_masters + k8s_workers
+
+- name: containerd 활성화 및 시작
+  systemd:
+    name: containerd
+    enabled: true
+    state: started
+
+- name: kubelet 활성화 (클러스터 구성 후 kubeadm이 시작)
+  systemd:
+    name: kubelet
+    enabled: true
+
+- name: sysctl 설정 적용 확인
+  sysctl:
+    name: "{{ item }}"
+    value: "1"
+    state: present
+    reload: true
+  loop:
+    - net.bridge.bridge-nf-call-iptables
+    - net.bridge.bridge-nf-call-ip6tables
+    - net.ipv4.ip_forward
+
+- name: br_netfilter 모듈 로드 확인
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - overlay
+    - br_netfilter
+
+- name: swap 비활성화 (런타임)
+  command: swapoff -a
+  changed_when: false
+
+- name: swap fstab 제거 확인
+  replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+    replace: '# \1'

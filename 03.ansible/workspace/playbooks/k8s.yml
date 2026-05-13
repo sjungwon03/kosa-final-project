@@ -1,0 +1,16 @@
+---
+- name: k8s 공통 구성
+  hosts: k8s_cluster
+  roles:
+    - common
+    - k8s_common
+
+- name: k8s 마스터 구성
+  hosts: k8s_masters
+  roles:
+    - k8s_master
+
+- name: k8s 워커 구성
+  hosts: k8s_workers
+  roles:
+    - k8s_worker

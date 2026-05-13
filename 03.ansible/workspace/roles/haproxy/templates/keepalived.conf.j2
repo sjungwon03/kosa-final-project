@@ -1,0 +1,23 @@
+vrrp_script check_haproxy {
+    script "killall -0 haproxy"
+    interval 2
+    weight 2
+}
+
+vrrp_instance VI_1 {
+    state {{ keepalived_state | default('BACKUP') }}
+    interface {{ keepalived_interface }}
+    virtual_router_id {{ keepalived_router_id }}
+    priority {{ keepalived_priority | default(100) }}
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass {{ keepalived_auth_pass }}  # TODO: group_vars/loadbalancers.yml에서 keepalived_auth_pass 설정 필요
+    }
+    virtual_ipaddress {
+        {{ keepalived_vip }}
+    }
+    track_script {
+        check_haproxy
+    }
+}

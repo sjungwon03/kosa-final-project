@@ -1,0 +1,32 @@
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    daemon
+
+defaults
+    log global
+    mode tcp
+    option tcplog
+    option dontlognull
+    timeout connect 5000
+    timeout client 50000
+    timeout server 50000
+
+frontend k8s_api
+    bind *:6443
+    default_backend k8s_masters
+
+backend k8s_masters
+    balance roundrobin
+    option tcp-check
+{% for master in k8s_masters %}
+    server {{ master.name }} {{ master.ip }}:6443 check
+{% endfor %}
+
+listen stats
+    bind *:{{ haproxy_stats_port }}
+    mode http
+    stats enable
+    stats uri /
+    stats refresh 5s
+    stats auth {{ haproxy_stats_user }}:{{ haproxy_stats_pass }}

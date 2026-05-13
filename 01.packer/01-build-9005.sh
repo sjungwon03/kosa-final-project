@@ -12,6 +12,9 @@ BUILT_BY=$(git config user.name 2>/dev/null || whoami)
 GIT_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "")
 GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 
+# TODO: 9003 존재 여부 자동 검증
+# ssh root@<proxmox_host> "qm list | grep -q ' 9003 '" || { echo "ERROR: 9003 템플릿 없음. 01-build-9003.sh 먼저 실행"; exit 1; }
+
 packer init ubuntu-2404-k8s/
 packer build \
   -var="built_by=$BUILT_BY" \

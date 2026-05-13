@@ -1,0 +1,10 @@
+---
+- import_playbook: dns.yml
+- import_playbook: haproxy.yml
+- import_playbook: registry.yml
+- import_playbook: k8s.yml
+- import_playbook: monitor.yml
+# TODO: 아래 플레이북 구현 후 주석 해제
+# - import_playbook: vault.yml
+# - import_playbook: siem.yml
+# - import_playbook: cicd.yml

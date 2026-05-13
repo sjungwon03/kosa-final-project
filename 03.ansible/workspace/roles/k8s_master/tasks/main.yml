@@ -1,0 +1,110 @@
+---
+# k8s_master: 클러스터 초기화 + CNI 설치 + HA 마스터 조인
+# 대상: k8s_masters (첫 번째 마스터에서만 init, 나머지는 control-plane join)
+
+# ── 1. 초기화 여부 확인 (멱등성) ──────────────────────────
+- name: kubeadm init 실행 여부 확인
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: kubeadm_init_done
+
+# ── 2. 첫 번째 마스터: 클러스터 초기화 ───────────────────
+- name: kubeadm init (첫 번째 마스터)
+  command: >
+    kubeadm init
+    --control-plane-endpoint={{ k8s_api_endpoint }}:{{ k8s_api_port }}
+    --pod-network-cidr={{ pod_network_cidr }}
+    --upload-certs
+  when:
+    - not kubeadm_init_done.stat.exists
+    - inventory_hostname == groups['k8s_masters'][0]
+  register: kubeadm_init_result
+
+- name: kubeconfig 디렉토리 생성 (첫 번째 마스터)
+  file:
+    path: /home/kosa/.kube
+    state: directory
+    owner: kosa
+    group: kosa
+    mode: '0700'
+  when: inventory_hostname == groups['k8s_masters'][0]
+
+- name: admin.conf → kosa 계정 kubeconfig 복사 (첫 번째 마스터)
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/kosa/.kube/config
+    remote_src: true
+    owner: kosa
+    group: kosa
+    mode: '0600'
+  when: inventory_hostname == groups['k8s_masters'][0]
+
+# CNI: Calico (pod_network_cidr: 192.168.0.0/16)
+# TODO: 폐쇄망 전환 전 아래 순서 필요
+#   1. Registry(Harbor) 먼저 배포
+#   2. 인터넷 머신에서 Calico 이미지 pull → Harbor push
+#   3. calico.yaml 이미지 경로를 registry.mgmt.local/calico/...로 교체
+#   4. 수정 파일을 roles/k8s_master/files/calico.yaml로 저장
+#   5. 이 태스크를 copy(→ /tmp/calico.yaml) + kubectl apply -f /tmp/calico.yaml로 교체
+- name: Calico CNI 설치
+  become_user: kosa
+  command: >
+    kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml
+    --server=https://127.0.0.1:6443 --insecure-skip-tls-verify --validate=false
+  when: inventory_hostname == groups['k8s_masters'][0]
+
+# ── 3. HA: 추가 마스터 조인 커맨드 준비 ──────────────────
+- name: 인증서 키 재업로드 (추가 마스터 조인용)
+  shell: kubeadm init phase upload-certs --upload-certs 2>/dev/null | tail -1
+  register: cert_key_raw
+  when: inventory_hostname == groups['k8s_masters'][0]
+  changed_when: false
+
+- name: 추가 마스터 join 커맨드 생성
+  command: kubeadm token create --print-join-command
+  register: master_join_cmd_raw
+  when: inventory_hostname == groups['k8s_masters'][0]
+  changed_when: false
+
+- name: 조인 정보 전역 변수화 (set_fact)
+  set_fact:
+    shared_master_join_cmd: "{{ hostvars[groups['k8s_masters'][0]]['master_join_cmd_raw'].stdout }}"
+    shared_cert_key: "{{ hostvars[groups['k8s_masters'][0]]['cert_key_raw'].stdout }}"
+  run_once: true
+
+# ── 4. HA: 추가 마스터(02, 03) 클러스터 조인 ─────────────
+- name: kubeadm join --control-plane (추가 마스터)
+  command: >
+    {{ shared_master_join_cmd }}
+    --control-plane
+    --certificate-key {{ shared_cert_key }}
+  args:
+    creates: /etc/kubernetes/admin.conf
+  when:
+    - inventory_hostname != groups['k8s_masters'][0]
+    - shared_master_join_cmd is defined
+
+- name: kubeconfig 디렉토리 생성 (추가 마스터)
+  file:
+    path: /home/kosa/.kube
+    state: directory
+    owner: kosa
+    group: kosa
+    mode: '0700'
+  when: inventory_hostname != groups['k8s_masters'][0]
+
+- name: admin.conf → kosa 계정 kubeconfig 복사 (추가 마스터)
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/kosa/.kube/config
+    remote_src: true
+    owner: kosa
+    group: kosa
+    mode: '0600'
+  when: inventory_hostname != groups['k8s_masters'][0]
+
+# ── 5. 워커 join 커맨드 준비 (k8s_worker 롤에서 delegate_to로 호출) ──
+- name: 워커 join 커맨드 생성 (새 토큰)
+  command: kubeadm token create --print-join-command
+  register: join_command_raw
+  when: inventory_hostname == groups['k8s_masters'][0]

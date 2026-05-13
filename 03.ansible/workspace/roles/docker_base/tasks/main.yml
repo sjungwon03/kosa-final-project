@@ -1,0 +1,44 @@
+---
+# roles/docker_base/tasks/main.yml
+
+- name: 필수 패키지 설치
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - python3-pip
+    state: present
+    update_cache: yes
+
+- name: Docker GPG 키 추가
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Docker 저장소 등록
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+
+- name: Docker 엔진 및 컴포즈 설치
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+    update_cache: yes
+
+- name: Docker 서비스 활성화
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Docker SDK for Python 설치 (Ansible 모듈용)
+  pip:
+    name: docker
