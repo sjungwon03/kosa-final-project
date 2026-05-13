@@ -63,6 +63,7 @@ resource "proxmox_vm_qemu" "vm" {
   cipassword = var.cipassword
   sshkeys    = var.ssh_public_key
   ipconfig0  = "ip=${var.ip_address},gw=${var.gateway}"
+  nameserver = "8.8.8.8 8.8.4.4"
 
   start_at_node_boot = true
 
