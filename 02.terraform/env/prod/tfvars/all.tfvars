@@ -17,3 +17,6 @@ vms = {
   "siem"            = { vm_id = 2270, ip = "172.16.30.70", vlan = 30, bridge = "vmbr0", node = "kosa22", memory = 8192, disk_size = 35 }
   "monitoring"      = { vm_id = 2380, ip = "172.16.30.80", vlan = 30, bridge = "vmbr0", node = "kosa23", memory = 8192, disk_size = 35 }
 }
+
+# [7] 내부 DNS VIP 설정 (CoreDNS 구성 완료 후 적용)
+vm_nameserver = "172.16.30.10"

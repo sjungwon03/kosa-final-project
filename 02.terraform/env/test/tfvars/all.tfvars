@@ -17,3 +17,6 @@ vms = {
   "siem"            = { vm_id = 12270, ip = "172.16.30.170", vlan = 30, bridge = "vmbr0", node = "kosa22" }
   "monitoring"      = { vm_id = 12380, ip = "172.16.30.180", vlan = 30, bridge = "vmbr0", node = "kosa23" }
 }
+
+# [7] 내부 DNS VIP 설정
+vm_nameserver = "172.16.30.10"

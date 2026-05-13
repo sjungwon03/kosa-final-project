@@ -38,5 +38,4 @@ variable "vm_nameserver" {
 variable "ssh_public_key" {
   type        = list(string)
   description = "VM에 주입할 SSH 공개키"
-  default     = []
 }

@@ -43,7 +43,7 @@ fi
 cd "$TARGET_DIR"
 
 # 모듈 초기화 (이미 완료된 경우 무시됨)
-terraform init -input=false > /dev/null
+terraform init -input=false > /dev/null || { echo "ERROR: terraform init failed"; exit 1; }
 
 VAR_FILE="tfvars/${ROLE}.tfvars"
 if [ ! -f "$VAR_FILE" ]; then
