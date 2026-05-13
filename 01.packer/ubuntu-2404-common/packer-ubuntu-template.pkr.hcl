@@ -11,7 +11,21 @@ packer {
 #       아래 변수들을 vault() 함수로 대체
 #       예: proxmox_api_token_secret = vault("secret/packer/proxmox", "token_secret")
 #           ssh_password             = vault("secret/packer/ssh", "password")
-#           ansible_public_key       = vault("secret/packer/ssh", "ansible_public_key")
+
+variable "git_commit" {
+  type    = string
+  default = ""
+}
+
+variable "git_branch" {
+  type    = string
+  default = ""
+}
+
+variable "built_by" {
+  type    = string
+  default = ""
+}
 
 variable "proxmox_api_url" {
   type = string
@@ -39,18 +53,9 @@ variable "ssh_password" {
   sensitive = true
 }
 
-variable "ansible_public_key_file" {
-  type    = string
-  default = "ansible.pub"
-}
-
-locals {
-  ansible_public_key = file(var.ansible_public_key_file)
-}
-
 variable "template_vm_id" {
   type    = number
-  default = 9005
+  default = 9003
 }
 
 variable "proxmox_host" {
@@ -90,6 +95,7 @@ source "proxmox-clone" "ubuntu-template" {
   ssh_handshake_attempts = 100
 
   qemu_agent = true
+  task_timeout = "10m"
 
   cloud_init              = true
   cloud_init_storage_pool = "rbd-storage"
@@ -101,12 +107,18 @@ build {
   provisioner "shell" {
     inline = [
       "sudo cloud-init status --wait || true",
+      "sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config.d/60-cloudimg-settings.conf || true",
+      "sudo sed -i 's/KbdInteractiveAuthentication no/KbdInteractiveAuthentication yes/' /etc/ssh/sshd_config.d/60-cloudimg-settings.conf || true",
+      "printf 'PasswordAuthentication yes\\nKbdInteractiveAuthentication yes\\n' | sudo tee /etc/ssh/sshd_config.d/10-password.conf",
+      "sudo systemctl enable ssh",
+      "sudo systemctl restart ssh",
+      "while sudo fuser /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock /var/lib/dpkg/lock-frontend > /dev/null 2>&1; do echo 'apt lock 대기 중...'; sleep 5; done",
       "sudo timedatectl set-timezone Asia/Seoul",
       # 부팅 시 네트워크 대기 서비스 비활성화 (cloud-init 환경에서 2분 타임아웃 발생)
       # 주의: 네트워크 의존 서비스가 network ready 전에 뜰 수 있음 → 문제 발생 시 아래 줄 제거 후 재빌드
       # "sudo systemctl disable systemd-networkd-wait-online.service",
       "sudo apt-get update",
-      "sudo apt-get install -y curl wget git vim net-tools auditd",
+      "sudo apt-get install -y curl wget git vim net-tools auditd python3-apt",
       "sudo systemctl disable auditd",
 
       # Promtail (Grafana APT)
@@ -118,7 +130,7 @@ build {
       "sudo systemctl disable promtail",
 
       # Wazuh Agent 4.x
-      "curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | sudo gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import",
+      "curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --dearmor | sudo tee /usr/share/keyrings/wazuh.gpg > /dev/null",
       "sudo chmod 644 /usr/share/keyrings/wazuh.gpg",
       "echo 'deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main' | sudo tee /etc/apt/sources.list.d/wazuh.list",
       "sudo apt-get update",
@@ -131,22 +143,20 @@ build {
 
   provisioner "shell" {
     environment_vars = [
-      "ANSIBLE_KEY=${local.ansible_public_key}",
-      "SSH_USER=${var.ssh_username}"
+      "GIT_COMMIT=${var.git_commit}",
+      "GIT_BRANCH=${var.git_branch}",
+      "BUILT_BY=${var.built_by}"
     ]
     inline = [
-      "mkdir -p /home/$SSH_USER/.ssh",
-      "chmod 700 /home/$SSH_USER/.ssh",
-      "echo \"$ANSIBLE_KEY\" >> /home/$SSH_USER/.ssh/authorized_keys",
-      "chmod 600 /home/$SSH_USER/.ssh/authorized_keys",
-      "chown -R $SSH_USER:$SSH_USER /home/$SSH_USER/.ssh",
-      "sudo sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config.d/60-cloudimg-settings.conf",
-      "echo 'PubkeyAuthentication yes' | sudo tee /etc/ssh/sshd_config.d/99-packer.conf",
-      "sudo systemctl restart ssh"
+      "echo \"TEMPLATE_NAME=ubuntu-2404-common\" | sudo tee /home/kosa/build-info.txt",
+      "echo \"TEMPLATE_VMID=${var.template_vm_id}\" | sudo tee -a /home/kosa/build-info.txt",
+      "echo \"BUILD_TIMESTAMP=$(date --iso-8601=seconds)\" | sudo tee -a /home/kosa/build-info.txt",
+      "echo \"GIT_COMMIT=$GIT_COMMIT\" | sudo tee -a /home/kosa/build-info.txt",
+      "echo \"GIT_BRANCH=$GIT_BRANCH\" | sudo tee -a /home/kosa/build-info.txt",
+      "echo \"BUILT_BY=$BUILT_BY\" | sudo tee -a /home/kosa/build-info.txt"
     ]
   }
 
-  # 골든 이미지 정리: SSH로 실행 (qm agent exec 불가 대체)
   provisioner "shell" {
     inline = [
       "sudo cloud-init clean --logs --seed",
@@ -162,7 +172,8 @@ build {
   # cloud_init=true가 cloud-init 드라이브를 새로 생성하면서 해당 값을 초기화하므로 여기서 재주입
   post-processor "shell-local" {
     inline = [
-      "ssh root@${var.proxmox_host} 'qm set ${var.template_vm_id} --ciuser ${var.ssh_username} --cipassword ${var.ssh_password} --ipconfig0 ip=dhcp'"
+      "ssh root@${var.proxmox_host} 'qm set ${var.template_vm_id} --ciuser ${var.ssh_username} --cipassword ${var.ssh_password} --ipconfig0 ip=dhcp'",
+      "ssh root@${var.proxmox_host} 'qm set ${var.template_vm_id} --delete serial0 --vga std'"
     ]
   }
 }
