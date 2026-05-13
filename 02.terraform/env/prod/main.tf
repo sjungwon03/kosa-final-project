@@ -14,13 +14,10 @@ provider "proxmox" {
 }
 
 module "vms" {
-  source = "../../"
-
-  template_vm_id = var.template_vm_id
-  template_node  = var.template_node
-  vms            = var.vms
-  vm_cores       = var.vm_cores
-  vm_memory      = var.vm_memory
-  vm_disk_size   = var.vm_disk_size
-  vm_nameserver  = var.vm_nameserver
+  source          = "../../"
+  template_node   = var.template_node
+  vms             = var.vms
+  vm_nameserver   = var.vm_nameserver
+  vm_password     = var.vm_password
+  ssh_public_key  = var.ssh_public_key
 }

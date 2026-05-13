@@ -14,20 +14,20 @@ resource "proxmox_virtual_environment_vm" "ubuntu" {
   vm_id     = each.value.vm_id
 
   clone {
-    vm_id     = var.template_vm_id
+    vm_id     = each.value.template_vm_id
     node_name = var.template_node
     full      = true
   }
 
   cpu {
-    cores   = var.vm_cores
+    cores   = each.value.cores
     sockets = 1
     type    = "host"
     numa    = true
   }
 
   memory {
-    dedicated = var.vm_memory
+    dedicated = each.value.memory
   }
 
   network_device {
@@ -40,7 +40,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu" {
   disk {
     datastore_id = "rbd-storage"
     interface    = "scsi0"
-    size         = var.vm_disk_size
+    size         = each.value.disk_size
     discard      = "on"
     iothread     = true
     ssd          = true
@@ -55,6 +55,11 @@ resource "proxmox_virtual_environment_vm" "ubuntu" {
         address = "${each.value.ip}/24"
         gateway = "172.16.${each.value.vlan}.1"
       }
+    }
+    user_account {
+      username = "kosa"
+      password = var.vm_password
+      keys     = length(var.ssh_public_key) > 0 ? var.ssh_public_key : compact([try(trimspace(file("~/.ssh/ansible-control.pub")), "")])
     }
   }
 
