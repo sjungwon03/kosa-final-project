@@ -20,7 +20,7 @@ resource "proxmox_vm_qemu" "vm" {
   bootdisk = "scsi0"
   scsihw   = "virtio-scsi-pci"
 
-  memory  = var.memory
+  memory = var.memory
 
   cpu {
     cores   = var.cpu_cores
@@ -29,13 +29,8 @@ resource "proxmox_vm_qemu" "vm" {
 
   agent = 0
 
-  serial {
-    id   = 0
-    type = "socket"
-  }
-
   vga {
-    type = "serial0"
+    type = "std"
   }
 
   disk {
@@ -63,9 +58,9 @@ resource "proxmox_vm_qemu" "vm" {
   cipassword = var.cipassword
   sshkeys    = var.ssh_public_key
   ipconfig0  = "ip=${var.ip_address},gw=${var.gateway}"
-  nameserver = "8.8.8.8 8.8.4.4"
+  nameserver = join(" ", var.dns_servers)
 
-  start_at_node_boot = true
+  start_at_node_boot = var.onboot
 
   tags = join(";", var.tags)
 
