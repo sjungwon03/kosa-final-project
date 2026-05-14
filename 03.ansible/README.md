@@ -6,7 +6,7 @@
 - 초기 구축: 소프트웨어 설치, 클러스터 초기화
 - 운영 자동화: 설정 변경, 노드 추가, 패치, 복구
 
-초기 구축(`playbooks/`)과 운영(`playbooks/ops/`)은 플레이북 폴더로 구분한다. 문서 잠금은 별도로 필요 없다.
+> 초기 구축(`playbooks/`)과 운영(`playbooks/ops/`)으로 구분
 
 **파이프라인 (실행 순서)**
 
@@ -19,18 +19,19 @@
 | 5 | **03.ansible** | **Ansible 플레이북 실행** | **컨트롤 노드** |
 
 **디렉토리 구성**
+
 ```
 03.ansible/
 ├── 03-create-control-node.sh   # 컨트롤 노드 VM 생성
-├── 03-deploy-to-control.sh     # 로컬 → 컨트롤 노드 파일 배포
-├── .env                        # VM 설정 (gitignore 대상)
-├── .env.example                # 설정 템플릿
-├── keys/                       # 팀원 SSH 공개키 (*.pub)
+├── 03-deploy-to-control.sh     # 로컬 → 컨트롤 노드로 설정 파일 배포
+├── .env                        # VM 설정 (gitignore)
 └── workspace/                  # Ansible 플레이북 및 롤
-    ├── ansible.cfg
+    ├── keys/                   # 사용자 SSH 공개키 (*.pub)
+    ├── ansible-run.sh          # 앤서블 플레이북 실행
+    ├── ansible.cfg             # 앤서블 플레이북 설정
     ├── group_vars/
     │   └── all.yml             # 전체 환경 공통 변수
-    ├── roles/                  # 환경 공통 롤
+    ├── roles/                   # 환경 공통 롤
     │   ├── common/             # 전체 VM 공통 기본 설정
     │   ├── dns/                # CoreDNS + etcd + Keepalived
     │   ├── haproxy/            # HAProxy + Keepalived
@@ -58,48 +59,14 @@
             └── certs/          # gitignore 대상
 ```
 
-## 03-deploy-to-control.sh
+- [TODO] Gitea Actions 연동을 통한 컨트롤 노드 배포 및 Ansible 실행 자동화
 
-로컬에서 Terraform + Ansible 파일을 컨트롤 노드 `~/workspace/`에 한 번에 배포.
-기존 디렉토리를 제거하고 `~/workspace/{terraform,ansible}` 구조로 재구성.
-
-> **주의**: 배포 시 컨트롤 노드의 `~/workspace/` 전체를 삭제 후 재생성.
-> `credentials.auto.tfvars` 등 컨트롤 노드에서만 생성한 파일은 미리 백업 필요.
-
-```bash
-# 프로젝트 루트에서 실행, 최초 SSH 연결 시 비밀번호 1회 입력
-bash 03.ansible/03-deploy-to-control.sh
-```
-
-컨트롤 노드 결과 구조:
-```
-~/workspace/
-├── terraform/   # 02.terraform/* 전체
-└── ansible/     # 03.ansible/workspace/* 전체
-```
-
-## 컨트롤 노드 실행 예시
-
-> 전체 예시는 [EXAMPLES.md](./EXAMPLES.md) 참조
-
-### Terraform
-
-```bash
-~/workspace/terraform/02-run.sh prod apply all
-~/workspace/terraform/02-run.sh test apply all
-```
-
-### Ansible
-
-```bash
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook ~/workspace/ansible/playbooks/site.yml
-```
-
-
+---
 
 ## 03-create-control-node.sh
 
-VMID 9003 클론 → 컨트롤 노드 VM(VMID 2210) 생성 및 스택 자동 설치
+- VMID 9003 클론 → 컨트롤 노드 VM(VMID 2210) 생성 및 스택 자동 설치
+- 최초 한 번 실행
 
 ### 스펙
 
@@ -118,7 +85,7 @@ VMID 9003 클론 → 컨트롤 노드 VM(VMID 2210) 생성 및 스택 자동 설
 
 ### 주요 스택
 
-cloud-init이 첫 부팅 시 자동 설치. `control` 계정만 실행 가능.
+cloud-init이 첫 부팅 시 자동 설치. `control` 계정만 실행 가능
 
 | 소프트웨어 | 용도 |
 |---|---|
@@ -128,8 +95,7 @@ cloud-init이 첫 부팅 시 자동 설치. `control` 계정만 실행 가능.
 
 ### 사전 조건
 
-- VMID 9003 (ubuntu-2404-common-v1) 템플릿 존재 (`01.packer` 빌드 완료)
-- Proxmox 노드에서 root로 실행
+- VMID 9003 (ubuntu-2404-common-v1) 템플릿 존재
 
 ### 변수 파일
 
@@ -141,11 +107,10 @@ cp .env.example .env
 
 ### SSH 공개키 등록
 
-팀원 공개키를 `keys/` 에 추가 후 sh 실행 시 자동 주입
+사용자 공개키를 `workspace/keys/` 에 추가 후 sh 실행 시 자동 주입
 
 ```bash
-# 예: 각자 공개키 파일 추가
-echo "ssh-ed25519 AAAA... member@laptop" > keys/member.pub
+echo "ssh-ed25519 AAAA... user@laptop" > workspace/keys/name.pub
 ```
 
 ### 실행
@@ -187,50 +152,50 @@ ansible --version
 etcd --version
 ```
 
-## 컨트롤 노드에서 실행
+---
 
-| 용도 | 컨트롤 노드 경로 | 저장소 경로 |
-|---|---|---|
-| Terraform | `~/workspace/terraform/` | `02.terraform/` |
-| Ansible | `~/workspace/ansible/` | `03.ansible/workspace/` |
+## 03-deploy-to-control.sh
 
-### 파일 전송
+- 로컬에서 Terraform + Ansible 파일을 컨트롤 노드 `~/workspace/`에 한 번에 배포
+- 반복 실행 가능 (수정 사항 동기화)
 
-**방법 1: 03-deploy-to-control.sh (권장)**
+### 사전 조건
+
+- `03-create-control-node.sh` 실행 완료 (컨트롤 노드 생성 및 접속 가능 상태)
+- 로컬 `02.terraform` 및 `03.ansible/workspace` 내부 설정 완료
+
+### 실행
+
+- 배포 시 컨트롤 노드의 `~/workspace/` 전체를 삭제 후 재생성함
+- `credentials.auto.tfvars` 등 컨트롤 노드에서 생성한 파일은 미리 백업 필요
+
 ```bash
-# 프로젝트 루트에서 실행
+# 프로젝트 루트에서 실행, 최초 SSH 연결 시 비밀번호 1회 입력
 bash 03.ansible/03-deploy-to-control.sh
 ```
 
-**방법 2: git sparse checkout**
-```bash
-# 컨트롤 노드에서 실행
-git clone --no-checkout --depth=1 --filter=blob:none https://github.com/<org>/kosa-final-project.git
-cd kosa-final-project
-git sparse-checkout set 02.terraform 03.ansible/workspace
-git checkout main
-cp -r 02.terraform ~/workspace/terraform
-cp -r 03.ansible/workspace ~/workspace/ansible
+### 동작 순서
 
-# 이후 업데이트 시
-git pull && cp -r 02.terraform ~/workspace/terraform && cp -r 03.ansible/workspace ~/workspace/ansible
+1. 기존 컨트롤 노드의 디렉토리 초기화
+2. `02.terraform/*` → 컨트롤 노드 `~/workspace/terraform/` 복사
+3. `03.ansible/workspace/*` → 컨트롤 노드 `~/workspace/ansible/` 복사
+4. 쉘 스크립트 실행 권한 부여
+
+### 구조
+
+```bash
+~/workspace/
+├── terraform/   # 02.terraform/* 전체
+└── ansible/     # 03.ansible/workspace/* 전체
 ```
 
-**방법 3: scp (저장소 비공개 또는 git 미구성 시)**
-```bash
-# 최초 1회
-scp -r 02.terraform control@172.16.30.7:~/workspace/terraform
-scp -r 03.ansible/workspace control@172.16.30.7:~/workspace/ansible
+---
 
-# 업데이트 시
-ssh control@172.16.30.7 "rm -rf ~/workspace/terraform ~/workspace/ansible"
-scp -r 02.terraform control@172.16.30.7:~/workspace/terraform
-scp -r 03.ansible/workspace control@172.16.30.7:~/workspace/ansible
-```
+## 인프라 구축 실행
+
+> 전체 예시는 [EXAMPLES.md](./EXAMPLES.md) 참조
 
 ### 1단계: Terraform으로 VM 생성
-
-**Ansible 실행 전 반드시 먼저 수행**
 
 ```bash
 cd ~/workspace/terraform/env/test
@@ -250,21 +215,18 @@ cp credentials.auto.tfvars.example credentials.auto.tfvars
 
 ### 2단계: Ansible SSH 접근 설정
 
-Terraform 배포 시 `credentials.auto.tfvars`의 `ssh_public_key`가 VM cloud-init으로 `kosa` 계정에 주입됨.
-컨트롤 노드에 대응하는 개인키(`~/.ssh/ansible`) 배치 필요.
+- Terraform 배포 시 `credentials.auto.tfvars`의 `ssh_public_key`가 VM cloud-init으로 `kosa` 계정에 주입
+- 컨트롤 노드에 대응하는 개인키(`~/.ssh/ansible`) 배치
 
 ```bash
-ls ~/.ssh/ansible   # 존재하면 완료
-```
+# 확인
+ls ~/.ssh/ansible
 
-없을 경우 새로 생성 후 공개키를 `credentials.auto.tfvars`의 `ssh_public_key`에 반영 → Terraform 재적용:
-```bash
+# 없을 경우 새로 생성 후 공개키를 `credentials.auto.tfvars`의 `ssh_public_key`에 반영
 ssh-keygen -t ed25519 -f ~/.ssh/ansible -C "ansible@control" -N ""
-cat ~/.ssh/ansible.pub   # 이 값을 credentials.auto.tfvars의 ssh_public_key에 추가
-```
+cat ~/.ssh/ansible.pub  # credentials.auto.tfvars의 ssh_public_key에 추가
 
-**접속 확인**
-```bash
+# 접속 확인
 cd ~/workspace/ansible
 ansible all -m ping
 ```
@@ -274,24 +236,29 @@ ansible all -m ping
 ```bash
 cd ~/workspace/ansible
 
-# prod 인벤토리 기준 (ansible.cfg 기본값)
+# prod
 ansible-playbook playbooks/dns.yml
 ansible-playbook playbooks/site.yml
 
-# test 인벤토리 지정
+# test
 ansible-playbook -i inventories/test/hosts playbooks/site.yml
 ```
 
-## 인프라 구성 명세 (prod 기준)
+---
 
-### 수동 구성 (인프라 외부)
+## 인프라 구성 명세 (prod)
+
+### 수동 구성
+
 | 호스트 | VM ID | VM name | IP | DNS | 주요 스택 |
 |---|---|---|---|---|---|
 | kosa21 | 2002 | pfSense  | 172.16.20.5  | firewall.edge.local | 방화벽 (Proxmox VM 방화벽은 비활성화) |
 | kosa21 | 2210 | Control  | 172.16.30.7  | ctrl.mgmt.local | Terraform, Ansible, etcd |
 | kosa24 | 2475 | Test/Sec | 172.16.30.75 | stress.mgmt.local | Kali Linux (k6, Locust) |
 
+
 ### 자동 구성 (Terraform + Ansible)
+
 | 호스트 | VM ID | VM name | IP | DNS | 주요 스택 |
 |---|---|---|---|---|---|
 | - | - | HAProxy VIP | 172.16.20.25 | haproxy-vip | 외부 → K8s 진입점 |
@@ -312,10 +279,14 @@ ansible-playbook -i inventories/test/hosts playbooks/site.yml
 
 ---
 
-## K8s 워커 노드 풀(Pool) 사전 프로비저닝 (TODO)
+## [TODO] K8s 워커 노드 풀(Pool) 사전 프로비저닝
 
-오토스케일링 대비 및 생성 시간 단축을 위해 예비 워커 노드를 사전 생성해두고 클러스터에는 조인하지 않는 구성.
+오토스케일링 대비 및 생성 시간 단축을 위해 예비 워커 노드를 사전 생성해두고 클러스터에는 조인하지 않는 구성
 
 - **대상 IP 대역**: `172.16.30.48~.50` (VMID: 2148, 2249, 2350)
-- **동작 방식**: 기존 워커 장애 시 Gitea Actions 트리거 → `ansible playbooks/ops/add-worker.yml --limit <IP>` 실행으로 즉시 조인.
-- `02.terraform/env/prod/tfvars/k8s-worker-pool.tfvars`로 분리하여 관리.
+- **동작 방식**: 기존 워커 장애 시 Gitea Actions 트리거 → `ansible playbooks/ops/add-worker.yml --limit <IP>` 실행으로 즉시 조인
+- `02.terraform/env/prod/tfvars/k8s-worker-pool.tfvars`로 분리하여 관리
+
+> **Terraform은 파일을 분리하고 Ansible은 분리하지 않음**
+> - **Terraform**: 상태(State)를 관리하므로 예비 워커 풀을 메인 클러스터와 섞이지 않게 분리해 프로비저닝 해야 안전
+> - **Ansible**: 행위(Task)를 수행하므로 파일 분리 불필요. 기존 `add-worker.yml`에 `--limit <IP>` 옵션을 통해 동적으로 타겟 지정
