@@ -102,3 +102,58 @@ ansible dns_servers -m shell \
 ```
 
 > **주의**: 제거 후에는 반드시 `03-deploy-to-control.sh`로 최신 코드를 동기화한 뒤 플레이북을 재실행한다.
+
+---
+
+## [Issue 4] apt 잠금 오류 (Failed to lock apt)
+
+### 현상
+
+```
+msg: 'Failed to lock apt for exclusive operation:
+     E:Could not get lock /var/lib/apt/lists/lock.
+     It is held by process XXXX (python3)'
+```
+
+또는 `apt-get update` 명령이 응답 없이 멈춤.
+
+### 원인
+
+VM 생성 직후 `unattended-upgrades`(자동 보안 업데이트) 또는 이전에 중단된 apt 프로세스가 잠금 파일을 점유하고 있는 상태. Ubuntu 22.04/24.04에서 VM 부팅 후 수 분 간 자동으로 실행되므로 매우 자주 발생한다.
+
+### 해결 (Solution)
+
+해당 서버에 직접 SSH로 접속하여 잠금을 제거한다.
+
+```bash
+# HAProxy 서버 예시 (172.16.20.26)
+ssh kosa@172.16.20.26
+
+# 1. 잠금을 잡고 있는 프로세스 확인
+sudo lsof /var/lib/apt/lists/lock
+
+# 2. 해당 PID 강제 종료
+sudo kill -9 <PID>
+
+# 3. 잠금 파일 삭제
+sudo rm -f /var/lib/apt/lists/lock \
+           /var/lib/dpkg/lock \
+           /var/lib/dpkg/lock-frontend
+
+# 4. dpkg 복구
+sudo dpkg --configure -a
+
+# 5. 패키지 목록 갱신 후 설치
+sudo apt-get update
+sudo apt-get install -y haproxy keepalived
+```
+
+### 예방 (Packer 템플릿 개선 TODO)
+
+Packer 빌드 시 `unattended-upgrades`를 비활성화하면 VM 생성 직후 잠금 충돌을 원천 방지할 수 있다.
+
+```bash
+# Packer inline 또는 Ansible 프로비저너에 추가
+sudo systemctl disable --now unattended-upgrades
+sudo apt-get remove -y unattended-upgrades
+```
