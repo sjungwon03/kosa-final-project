@@ -261,21 +261,26 @@ ansible-playbook -i inventories/test/hosts playbooks/site.yml
 
 | 호스트 | VM ID | VM name | IP | DNS | 주요 스택 |
 |---|---|---|---|---|---|
-| - | - | HAProxy VIP | 172.16.20.25 | haproxy-vip | 외부 → K8s 진입점 |
+| - | - | DNS VIP | 172.16.30.10 | dns.svc.local | Keepalived Float IP |
+| kosa22 | 2211 | DNS #1 | 172.16.30.11 | dns-01.svc.local | Keepalived, CoreDNS, etcd |
+| kosa23 | 2312 | DNS #2 | 172.16.30.12 | dns-02.svc.local | Keepalived, CoreDNS, etcd |
+| kosa21 | 2115 | Vault #1 | 172.16.30.20 | vault-01.sec.local | HashiCorp Vault, Vault PKI |
+| kosa24 | 2416 | Vault #2 | 172.16.30.21 | vault-02.sec.local | HashiCorp Vault, Vault PKI |
+| - | - | HAProxy VIP | 172.16.20.25 | haproxy.svc.local | Keepalived |
 | kosa22 | 2226 | HAProxy #1 | 172.16.20.26 | haproxy-01.svc.local | Keepalived, HAProxy |
 | kosa23 | 2327 | HAProxy #2 | 172.16.20.27 | haproxy-02.svc.local | Keepalived, HAProxy |
-| - | - | K8s VIP | 172.16.30.30 | k8s-vip | K8s 내부 API 통신 (Keepalived) |
-| kosa21 | 2131 | K8s Master #01 | 172.16.30.31 | k8s-master-01 | Keepalived, kubeadm, kube-apiserver |
-| kosa22 | 2232 | K8s Master #02 | 172.16.30.32 | k8s-master-02 | Keepalived, kubeadm, kube-apiserver |
-| kosa23 | 2333 | K8s Master #03 | 172.16.30.33 | k8s-master-03 | Keepalived, kubeadm, kube-apiserver |
+| - | - | K8s VIP | 172.16.30.30 | - | Keepalived |
+| kosa21 | 2131 | K8s Master #01 | 172.16.30.31 | master-01.k8s.local | Keepalived, kubeadm |
+| kosa22 | 2232 | K8s Master #02 | 172.16.30.32 | master-02.k8s.local | Keepalived, kubeadm |
+| kosa23 | 2333 | K8s Master #03 | 172.16.30.33 | master-03.k8s.local | Keepalived, kubeadm |
 | kosa24 | 2440 | Platform Worker | 172.16.30.40 | node-plat.k8s.local | Ingress, MetalLB, ArgoCD, Falco |
 | kosa21 | 2145 | K8s Worker #01 | 172.16.30.45 | node-01.k8s.local | kubelet |
 | kosa22 | 2246 | K8s Worker #02 | 172.16.30.46 | node-02.k8s.local | kubelet |
 | kosa23 | 2347 | K8s Worker #03 | 172.16.30.47 | node-03.k8s.local | kubelet |
-| kosa21 | 2150 | Registry | 172.16.30.50 | registry | Harbor |
-| kosa24 | 2455 | CICD | 172.16.30.55 | cicd | Gitea, Act_Runner |
-| kosa22 | 2270 | SIEM | 172.16.30.70 | siem | Wazuh |
-| kosa23 | 2380 | Monitoring | 172.16.30.80 | monitoring | Grafana, Prometheus, Loki |
+| kosa21 | 2150 | Registry | 172.16.30.50 | registry.mgmt.local | Harbor |
+| kosa24 | 2455 | CICD | 172.16.30.55 | cicd.mgmt.local | Gitea, Act_Runner |
+| kosa22 | 2270 | SIEM | 172.16.30.70 | siem.mgmt.local | Wazuh |
+| kosa23 | 2380 | Monitoring | 172.16.30.80 | monitor.mgmt.local | Grafana, Prometheus, Loki |
 
 ---
 
