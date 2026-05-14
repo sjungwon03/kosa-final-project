@@ -1,6 +1,17 @@
 ---
 # roles/haproxy/tasks/main.yml
 
+- name: apt 잠금 해제 대기 (최대 60초)
+  shell: |
+    for i in $(seq 1 12); do
+      if ! lsof /var/lib/apt/lists/lock > /dev/null 2>&1; then
+        exit 0
+      fi
+      sleep 5
+    done
+    exit 1
+  changed_when: false
+
 - name: HAProxy 및 Keepalived 설치
   apt:
     name:
