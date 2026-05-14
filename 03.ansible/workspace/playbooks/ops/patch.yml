@@ -1,0 +1,26 @@
+---
+# ops/patch.yml — 전체 노드 보안 패치 (Rolling)
+# 사용법: ansible-playbook playbooks/ops/patch.yml -i inventories/prod/hosts
+- name: 전체 노드 보안 패치
+  hosts: all
+  serial: 1        # 한 번에 1대씩 순차 패치 (서비스 중단 방지)
+  become: true
+  tasks:
+    - name: apt 캐시 업데이트
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: 보안 패치 적용
+      apt:
+        upgrade: safe
+      register: apt_result
+
+    - name: 재부팅 필요 여부 확인
+      stat:
+        path: /var/run/reboot-required
+      register: reboot_required
+
+    - name: 패치 결과 출력
+      debug:
+        msg: "{{ inventory_hostname }}: 재부팅 {{ '필요' if reboot_required.stat.exists else '불필요' }}"
