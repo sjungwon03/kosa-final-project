@@ -1,1 +1,15 @@
 ---
+# DNS 서버 Keepalived MASTER/BACKUP 설정은 hosts 파일에서 지정
+# (keepalived_state, keepalived_priority)
+
+# 등록할 DNS 레코드 목록 (etcdctl put /coredns/local/mgmt/<name>)
+dns_records:
+  - { name: "k8s-master-01",  ip: "172.16.30.30" }
+  - { name: "k8s-master-02",  ip: "172.16.30.31" }
+  - { name: "k8s-master-03",  ip: "172.16.30.32" }
+  - { name: "k8s-vip",        ip: "172.16.20.25" }
+  - { name: "registry",       ip: "172.16.30.50" }
+  - { name: "monitoring",     ip: "172.16.30.80" }
+  - { name: "siem",           ip: "172.16.30.70" }
+  - { name: "vault",          ip: "172.16.30.20" }
+  - { name: "cicd",           ip: "172.16.30.55" }

@@ -1,1 +1,16 @@
 ---
+# VIP 관련 설정
+keepalived_vip: "172.16.20.25"
+keepalived_interface: "eth0"
+keepalived_router_id: 51
+keepalived_auth_pass: "kosa1234"
+
+# HAProxy 백엔드 및 통계 설정
+k8s_masters:
+  - { name: "master-01", ip: "172.16.30.30" }
+  - { name: "master-02", ip: "172.16.30.31" }
+  - { name: "master-03", ip: "172.16.30.32" }
+
+haproxy_stats_port: 8080
+haproxy_stats_user: "admin"
+haproxy_stats_pass: "kosa1234"

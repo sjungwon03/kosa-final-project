@@ -1,0 +1,17 @@
+---
+coredns_version: "1.11.3"
+etcd_version: "v3.5.13"
+etcd_data_dir: "/var/lib/etcd"
+
+# Keepalived VIP
+dns_keepalived_vip: "172.16.30.10"
+dns_keepalived_interface: "eth0"
+dns_keepalived_router_id: 10
+dns_keepalived_auth_pass: "kosa1234"
+
+# CoreDNS 설정
+dns_forward_upstream: "8.8.8.8 8.8.4.4"
+dns_domain: "mgmt.local"
+
+# 기본 DNS 레코드 (group_vars/dns_servers.yml에서 override)
+dns_records: []

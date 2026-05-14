@@ -1,1 +1,164 @@
 ---
+# dns: CoreDNS + etcd + Keepalived (VIP: 172.16.30.10)
+# 수동 구성을 Ansible 멱등성 방식으로 변환
+
+# ── 1. etcd 유저 및 디렉토리 ──────────────────────────────────
+- name: etcd 전용 유저 생성
+  user:
+    name: etcd
+    system: true
+    home: "{{ etcd_data_dir }}"
+    shell: /sbin/nologin
+    create_home: false
+
+- name: etcd 데이터 디렉토리 생성
+  file:
+    path: "{{ etcd_data_dir }}"
+    state: directory
+    owner: etcd
+    group: etcd
+    mode: '0700'
+
+# ── 2. etcd 바이너리 다운로드 ─────────────────────────────────
+- name: etcd tarball 다운로드
+  get_url:
+    url: "https://github.com/etcd-io/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+    dest: "/tmp/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+    mode: '0644'
+
+- name: etcd tarball 압축 해제
+  unarchive:
+    src: "/tmp/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+    dest: /tmp/
+    remote_src: true
+    creates: "/tmp/etcd-{{ etcd_version }}-linux-amd64/etcd"
+
+- name: etcd 바이너리 설치
+  copy:
+    src: "/tmp/etcd-{{ etcd_version }}-linux-amd64/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    owner: etcd
+    group: etcd
+    mode: '0755'
+    remote_src: true
+  loop:
+    - etcd
+    - etcdctl
+  notify: restart etcd
+
+# ── 3. etcd systemd 서비스 ────────────────────────────────────
+- name: etcd systemd 유닛 배포
+  template:
+    src: etcd.service.j2
+    dest: /etc/systemd/system/etcd.service
+    mode: '0644'
+  notify: restart etcd
+
+- name: etcd 활성화 및 시작
+  systemd:
+    name: etcd
+    enabled: true
+    state: started
+    daemon_reload: true
+
+# ── 4. CoreDNS 바이너리 다운로드 ─────────────────────────────
+- name: CoreDNS tarball 다운로드
+  get_url:
+    url: "https://github.com/coredns/coredns/releases/download/v{{ coredns_version }}/coredns_{{ coredns_version }}_linux_amd64.tgz"
+    dest: "/tmp/coredns_{{ coredns_version }}_linux_amd64.tgz"
+    mode: '0644'
+
+- name: CoreDNS tarball 압축 해제
+  unarchive:
+    src: "/tmp/coredns_{{ coredns_version }}_linux_amd64.tgz"
+    dest: /tmp/
+    remote_src: true
+    creates: /tmp/coredns
+
+- name: CoreDNS 바이너리 설치
+  copy:
+    src: /tmp/coredns
+    dest: /usr/local/bin/coredns
+    mode: '0755'
+    remote_src: true
+  notify: restart coredns
+
+# ── 5. CoreDNS 설정 ───────────────────────────────────────────
+- name: CoreDNS 설정 디렉토리 생성
+  file:
+    path: /etc/coredns
+    state: directory
+    mode: '0755'
+
+- name: Corefile 배포
+  template:
+    src: Corefile.j2
+    dest: /etc/coredns/Corefile
+  notify: restart coredns
+
+- name: CoreDNS systemd 유닛 배포
+  copy:
+    dest: /etc/systemd/system/coredns.service
+    content: |
+      [Unit]
+      Description=CoreDNS DNS server
+      After=network.target etcd.service
+
+      [Service]
+      ExecStart=/usr/local/bin/coredns -conf /etc/coredns/Corefile
+      Restart=on-failure
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  notify: restart coredns
+
+- name: CoreDNS 활성화 및 시작
+  systemd:
+    name: coredns
+    enabled: true
+    state: started
+    daemon_reload: true
+
+# ── 6. Keepalived (VIP: 172.16.30.10) ───────────────────────
+- name: Keepalived 설치
+  apt:
+    name: keepalived
+    state: present
+    update_cache: false
+
+- name: 커널 비로컬 바인딩 허용 (VIP 바인딩용)
+  sysctl:
+    name: net.ipv4.ip_nonlocal_bind
+    value: '1'
+    state: present
+    reload: true
+
+- name: Keepalived 설정 배포
+  template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    mode: '0644'
+  notify: restart keepalived
+
+- name: Keepalived 활성화 및 시작
+  systemd:
+    name: keepalived
+    enabled: true
+    state: started
+
+# ── 7. 기본 DNS 레코드 등록 ───────────────────────────────────
+# 첫 번째 노드에서만 1회 실행
+- name: 기본 DNS 레코드 등록
+  command: >
+    etcdctl put /coredns/{{ dns_domain | split('.') | reverse | join('/') }}/{{ item.name }}
+    '{"host":"{{ item.ip }}"}'
+  environment:
+    ETCDCTL_API: "3"
+    ETCDCTL_ENDPOINTS: "http://127.0.0.1:2379"
+  loop: "{{ dns_records }}"
+  when:
+    - inventory_hostname == groups['dns_servers'][0]
+    - dns_records is defined
+  changed_when: true
