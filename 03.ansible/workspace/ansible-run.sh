@@ -13,10 +13,15 @@ PLAYBOOK="${1:?사용법: $0 <playbook> [추가 옵션]}"
 shift
 
 # 실행자 정보 로그 기록
+# DEPLOYER 환경변수가 없으면 OS 계정명으로 대체
+# TODO: 배포 실행자 추적 — 현재는 컨트롤 노드 계정(control)만 식별됨.
+#       Phase 3에서 Gitea Actions 연동 시 DEPLOYER=$GITEA_ACTOR 자동 주입 예정.
+DEPLOYER="${DEPLOYER:-$(whoami)}"
+
 {
   echo ""
   echo "================================================================"
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] EXECUTED BY: $(whoami)@$(hostname)"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] EXECUTED BY: ${DEPLOYER}@$(hostname)"
   echo "  PLAYBOOK : ${PLAYBOOK}"
   echo "  ARGS     : $*"
   echo "================================================================"
