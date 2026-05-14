@@ -12,13 +12,17 @@
     exit 1
   changed_when: false
 
+- name: apt 캐시 업데이트
+  apt:
+    update_cache: true
+    cache_valid_time: 3600
+
 - name: HAProxy 및 Keepalived 설치
   apt:
     name:
       - haproxy
       - keepalived
     state: present
-    update_cache: yes
 
 - name: HAProxy 설정 파일 적용
   template:
