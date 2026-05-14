@@ -16,9 +16,11 @@ resource "proxmox_vm_qemu" "vm" {
   clone      = var.template_name
   full_clone = true
 
-  boot = "order=scsi0;ide2"
+  boot     = "order=scsi0"
+  bootdisk = "scsi0"
+  scsihw   = "virtio-scsi-pci"
 
-  memory  = var.memory
+  memory = var.memory
 
   cpu {
     cores   = var.cpu_cores
@@ -27,12 +29,15 @@ resource "proxmox_vm_qemu" "vm" {
 
   agent = 0
 
+  vga {
+    type = "std"
+  }
+
   disk {
     slot    = "scsi0"
     type    = "disk"
     storage = var.storage
     size    = "${var.disk_size}G"
-    iothread = true
   }
 
   disk {
@@ -53,8 +58,7 @@ resource "proxmox_vm_qemu" "vm" {
   cipassword = var.cipassword
   sshkeys    = var.ssh_public_key
   ipconfig0  = "ip=${var.ip_address},gw=${var.gateway}"
-
-  nameserver = join(";", var.dns_servers)
+  nameserver = join(" ", var.dns_servers)
 
   start_at_node_boot = var.onboot
 
