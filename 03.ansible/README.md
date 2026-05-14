@@ -281,3 +281,41 @@ ansible-playbook playbooks/site.yml
 # test 인벤토리 지정
 ansible-playbook -i inventories/test/hosts playbooks/site.yml
 ```
+
+## 인프라 구성 명세 (prod 기준)
+
+### 수동 구성 (인프라 외부)
+| 호스트 | VM ID | VM name | IP | DNS | 주요 스택 |
+|---|---|---|---|---|---|
+| kosa21 | 2002 | pfSense  | 172.16.20.5  | firewall.edge.local | 방화벽 (Proxmox VM 방화벽은 비활성화) |
+| kosa21 | 2210 | Control  | 172.16.30.7  | ctrl.mgmt.local | Terraform, Ansible, etcd |
+| kosa24 | 2475 | Test/Sec | 172.16.30.75 | stress.mgmt.local | Kali Linux (k6, Locust) |
+
+### 자동 구성 (Terraform + Ansible)
+| 호스트 | VM ID | VM name | IP | DNS | 주요 스택 |
+|---|---|---|---|---|---|
+| - | - | HAProxy VIP | 172.16.20.25 | haproxy-vip | 외부 → K8s 진입점 |
+| kosa22 | 2226 | HAProxy #1 | 172.16.20.26 | haproxy-01.svc.local | Keepalived, HAProxy |
+| kosa23 | 2327 | HAProxy #2 | 172.16.20.27 | haproxy-02.svc.local | Keepalived, HAProxy |
+| - | - | K8s VIP | 172.16.30.30 | k8s-vip | K8s 내부 API 통신 (Keepalived) |
+| kosa21 | 2131 | K8s Master #01 | 172.16.30.31 | k8s-master-01 | Keepalived, kubeadm, kube-apiserver |
+| kosa22 | 2232 | K8s Master #02 | 172.16.30.32 | k8s-master-02 | Keepalived, kubeadm, kube-apiserver |
+| kosa23 | 2333 | K8s Master #03 | 172.16.30.33 | k8s-master-03 | Keepalived, kubeadm, kube-apiserver |
+| kosa24 | 2440 | Platform Worker | 172.16.30.40 | node-plat.k8s.local | Ingress, MetalLB, ArgoCD, Falco |
+| kosa21 | 2145 | K8s Worker #01 | 172.16.30.45 | node-01.k8s.local | kubelet |
+| kosa22 | 2246 | K8s Worker #02 | 172.16.30.46 | node-02.k8s.local | kubelet |
+| kosa23 | 2347 | K8s Worker #03 | 172.16.30.47 | node-03.k8s.local | kubelet |
+| kosa21 | 2150 | Registry | 172.16.30.50 | registry | Harbor |
+| kosa24 | 2455 | CICD | 172.16.30.55 | cicd | Gitea, Act_Runner |
+| kosa22 | 2270 | SIEM | 172.16.30.70 | siem | Wazuh |
+| kosa23 | 2380 | Monitoring | 172.16.30.80 | monitoring | Grafana, Prometheus, Loki |
+
+---
+
+## K8s 워커 노드 풀(Pool) 사전 프로비저닝 (TODO)
+
+오토스케일링 대비 및 생성 시간 단축을 위해 예비 워커 노드를 사전 생성해두고 클러스터에는 조인하지 않는 구성.
+
+- **대상 IP 대역**: `172.16.30.48~.50` (VMID: 2148, 2249, 2350)
+- **동작 방식**: 기존 워커 장애 시 Gitea Actions 트리거 → `ansible playbooks/ops/add-worker.yml --limit <IP>` 실행으로 즉시 조인.
+- `02.terraform/env/prod/tfvars/k8s-worker-pool.tfvars`로 분리하여 관리.

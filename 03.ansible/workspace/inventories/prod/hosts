@@ -11,15 +11,15 @@
 172.16.20.27 keepalived_state=BACKUP keepalived_priority=100
 
 [k8s_masters]
-172.16.30.30
-172.16.30.31
-172.16.30.32
+172.16.30.31 keepalived_state=MASTER keepalived_priority=101
+172.16.30.32 keepalived_state=BACKUP keepalived_priority=100
+172.16.30.33 keepalived_state=BACKUP keepalived_priority=99
 
 [k8s_workers]
 172.16.30.40
-172.16.30.41
-172.16.30.42
-172.16.30.43
+172.16.30.45
+172.16.30.46
+172.16.30.47
 
 [registry]
 172.16.30.50

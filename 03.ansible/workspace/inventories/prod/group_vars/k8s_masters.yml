@@ -1,3 +1,8 @@
 ---
-# prod 환경: HAProxy VIP를 통해 통신 (VLAN 20 DMZ 대역)
-k8s_api_endpoint: "172.16.20.25"
+# K8s 내부 VIP (VLAN 30) — 마스터 3대가 Keepalived로 경쟁
+# kubeadm --control-plane-endpoint 이 값을 사용
+k8s_api_endpoint: "172.16.30.30"
+k8s_vip: "172.16.30.30"
+k8s_vip_interface: "eth0"
+k8s_vip_router_id: 30
+k8s_vip_auth_pass: "kosa1234"

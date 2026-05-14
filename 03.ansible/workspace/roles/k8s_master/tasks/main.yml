@@ -2,6 +2,34 @@
 # k8s_master: 클러스터 초기화 + CNI 설치 + HA 마스터 조인
 # 대상: k8s_masters (첫 번째 마스터에서만 init, 나머지는 control-plane join)
 
+# ── 0. K8s 내부 VIP (Keepalived, VLAN 30) ──────────────────
+# 마스터 3대 모두에 설치. 우선순위에 따라 1대만 VIP 점유.
+- name: Keepalived 설치 (K8s 내부 VIP용)
+  apt:
+    name: keepalived
+    state: present
+    update_cache: false
+
+- name: 커널 비로컬 바인딩 허용 (VIP 바인딩용)
+  sysctl:
+    name: net.ipv4.ip_nonlocal_bind
+    value: '1'
+    state: present
+    reload: true
+
+- name: Keepalived 설정 배포 (K8s VIP)
+  template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    mode: '0644'
+  notify: restart keepalived
+
+- name: Keepalived 활성화 및 시작
+  systemd:
+    name: keepalived
+    enabled: true
+    state: started
+
 # ── 1. 초기화 여부 확인 (멱등성) ──────────────────────────
 - name: kubeadm init 실행 여부 확인
   stat:

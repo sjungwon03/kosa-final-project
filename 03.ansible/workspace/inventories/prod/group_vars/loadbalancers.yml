@@ -5,11 +5,10 @@ keepalived_interface: "eth0"
 keepalived_router_id: 51
 keepalived_auth_pass: "kosa1234"
 
-# HAProxy 백엔드 및 통계 설정
+# HAProxy 백엔드 — K8s 내부 VIP 단일 지정 (마스터 직접 접근 제거)
+# 마스터 개별 IP 대신 VLAN 30 내부 VIP를 통해 부하분산
 k8s_masters:
-  - { name: "master-01", ip: "172.16.30.30" }
-  - { name: "master-02", ip: "172.16.30.31" }
-  - { name: "master-03", ip: "172.16.30.32" }
+  - { name: "k8s-vip", ip: "172.16.30.30" }
 
 haproxy_stats_port: 8080
 haproxy_stats_user: "admin"
