@@ -12,16 +12,16 @@
 > 본 프로젝트는 LLM(AI Pair Programmer)을 사용하여 인프라 리서치 및 설계 검증 도구로 활용하였습니다.
 
 
-**레포지터리 구조**
+## 레포지터리 구조
+
 ```bash
 ├── 00.scripts/         # Proxmox 베이스 템플릿 생성 스크립트
 ├── 01.packer/          # 공통 VM 템플릿 이미지 빌드
 ├── 02.terraform/       # Proxmox VM 프로비저닝 (IaC)
 ├── 03.ansible/         # OS 설정 및 서비스 오케스트레이션
-├── 03-1.nexus/         # 폐쇄망 전환 전 Nexus 미러링 체크리스트 (임시)
 ├── 04.k8s/             # Kubernetes 리소스 매니페스트 (YAML)
-├── 05.cicd/            # GitHub Actions 기반 파이프라인 자동화
-├── 06.argocd/          # GitOps 배포 환경 구성
+├── 05.cicd/            # Gitea + act_runner 인프라 CI (Terraform/Ansible 자동화, Nexus 미러링)
+├── 06.argocd/          # ArgoCD GitOps CD — 웹앱 서비스 K8s 배포 (팀원 담당)
 ├── 70.security/        # 보안 관제 및 에이전트 설정 (Wazuh)
 ├── 80.monitoring/      # 관측성 스택 구축 (PLG)
 └── 99.docs/            # 프로젝트 통합 산출물
@@ -54,13 +54,30 @@
             └─ [ Vault / Monitoring ]
 ```
 
+**CI/CD 파이프라인 흐름**
+- 인프라 CI (외부 VM): Gitea + act_runner (Terraform/Ansible 자동화, Nexus 패키지 미러링)
+- 앱 CI/CD (K8s 내부): GitLab + ArgoCD (서비스 빌드·테스트·K8s 자동 배포)
+
+```text
+  [인프라 CI]                          [앱 CI/CD]
+  Gitea (VM .55)                       GitLab (K8s 내부)
+      │ trigger                             │ trigger
+      ▼                                     ▼
+  act_runner  ──► Terraform/Ansible     act_runner ──► build/test
+  (VM .55)    ──► Nexus 미러링                        ──► image push → Nexus
+                                             │
+                                        ArgoCD (K8s 내부)
+                                             │ watch manifest
+                                             ▼
+                                         K8s Deploy
+```
+
 
 ## 인프라 설계 원칙
 
 **운영 및 자동화 전략**
 - 수동 설치: 구조 변화가 적고 GUI 설정이 유리한 도구 (ex. pfSense)
 - 자동화: 설정이 잦고 스케일링이 필요한 서비스 (ex. K8s, IaC)
-- 업무 범위: 인프라 프로비저닝, 보안, 모니터링에 한정하며 앱 코드는 포함하지 않음
 
 **네트워크 및 보안**
 - 보안 컴플라이언스 준수를 위한 물리/논리적 망 분리 (VLAN 20/30)
@@ -74,6 +91,7 @@
 
 > 우로보로스(Ouroboros): A를 고치기 위해 B가 필요한데, B가 작동하려면 A가 살아있어야 하는 상황
 
+
 ## 의도적 트레이드오프
 
 **pfSense (SPOF)**
@@ -82,6 +100,7 @@
 **Platform Worker (SPOF)**
 - ArgoCD 등 인프라 지원용 파드만 구동되므로 일시적 장애가 실제 서비스 중단을 초래하지 않음
 
+
 ## 구성 순서
 
 ### 인터넷 연결 단계
@@ -89,12 +108,13 @@
 
 1. pfSense: 방화벽, NAT, WireGuard VPN (수동)
 2. Control: Terraform, Ansible 컨트롤 노드 (스크립트)
-3. MinIO: Terraform state backend
-4. DNS: CoreDNS, etcd, Keepalived VIP
-5. SIEM: Wazuh manager (VM 배포 시점부터 에이전트 수신)
-6. Monitor: PLG 스택, Keepalived VIP (promtail 로그 수집 시작)
-7. HAProxy: L4 로드밸런서, Keepalived VIP
-8. Nexus: apt mirror, raw binary, docker registry (패키지 미러링 완료)
+3. DNS: CoreDNS, etcd, Keepalived VIP
+4. MinIO: Terraform state backend
+5. SIEM: Wazuh manager
+6. Monitor: PLG 스택, Keepalived VIP (promtail 로그 수집)
+7. Vault: HashiCorp Vault HA (서비스 시크릿 관리)
+8. HAProxy: L4 로드밸런서, Keepalived VIP
+9. Nexus: apt mirror, raw binary, docker registry (패키지 미러링)
 
 ### 폐쇄망 전환
 Nexus 미러링 완료 후 pfSense VLAN 30 룰 변경
@@ -104,7 +124,7 @@ Nexus 미러링 완료 후 pfSense VLAN 30 룰 변경
 ### 폐쇄망 단계
 Nexus 내부 미러에서 패키지 및 바이너리 설치
 
-9. K8s
-10. CICD
-11. DB (팀원 담당)
-12. Vault
+10. K8s
+11. CICD: Gitea + act_runner (Terraform/Ansible 자동화, Nexus 미러링)
+12. 웹앱 서비스 CI/CD (K8s 내부): GitLab + ArgoCD
+13. DB
