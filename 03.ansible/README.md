@@ -47,20 +47,17 @@
     │   ├── k8s_common/         # k8s 공통 설정
     │   ├── k8s_master/         # k8s 마스터 노드
     │   ├── k8s_worker/         # k8s 워커 노드
-    │   ├── percona_pxc/        # Percona XtraDB Cluster
-    │   ├── proxysql/           # ProxySQL + Keepalived VIP
     │   ├── cicd/               # Gitea
     │   ├── siem/               # Wazuh
     │   └── monitor/            # 모니터링 (Grafana, Loki 등)
     ├── playbooks/
     │   ├── site.yml            # 전체 실행
     │   ├── dns.yml
-    │   ├── vault.yml
     │   ├── haproxy.yml
-    │   ├── registry.yml
+    │   ├── nexus.yml
     │   ├── minio.yml
+    │   ├── vault.yml
     │   ├── k8s.yml
-    │   ├── db.yml
     │   ├── cicd.yml
     │   ├── siem.yml
     │   ├── monitor.yml
@@ -259,13 +256,13 @@ rm -rf ~/.ansible/cp/*
 | kosa22 | 2211 | dns-01      | 172.16.30.11 | dns-01.svc.local | Keepalived, CoreDNS, etcd | rbd-storage |
 | kosa23 | 2312 | dns-02      | 172.16.30.12 | dns-02.svc.local | Keepalived, CoreDNS, etcd | rbd-storage |
 | kosa24 | 2415 | nexus-01    | 172.16.30.15 | nexus.mgmt.local | Nexus (apt mirror, binary, docker registry) | rbd-storage |
-| - | - | vault-vip   | 172.16.30.20 | vault.sec.local | Keepalived Float IP | - |
+| - | - | Vault VIP | 172.16.30.20 | vault.sec.local | Keepalived Float IP | - |
 | kosa21 | 2121 | vault-01    | 172.16.30.21 | vault-01.sec.local | HashiCorp Vault/PKI, Raft | rbd-storage |
 | kosa24 | 2422 | vault-02    | 172.16.30.22 | vault-02.sec.local | HashiCorp Vault/PKI, Raft | rbd-storage |
-| - | - | haproxy-vip | 172.16.20.25 | haproxy.svc.local | Keepalived | - |
+| - | - | Haproxy VIP | 172.16.20.25 | haproxy.svc.local | Keepalived | - |
 | kosa22 | 2226 | haproxy-01  | 172.16.20.26 | haproxy-01.svc.local | Keepalived, HAProxy | rbd-storage |
 | kosa23 | 2327 | haproxy-02  | 172.16.20.27 | haproxy-02.svc.local | Keepalived, HAProxy | rbd-storage |
-| - | - | k8s-vip     | 172.16.30.30 | - | - | - |
+| - | - | k8s VIP     | 172.16.30.30 | - | - | - |
 | kosa21 | 2131 | k8s-master-01   | 172.16.30.31 | master-01.k8s.local | Keepalived, kubeadm | **local-lvm** |
 | kosa22 | 2232 | k8s-master-02   | 172.16.30.32 | master-02.k8s.local | Keepalived, kubeadm | **local-lvm** |
 | kosa23 | 2333 | k8s-master-03   | 172.16.30.33 | master-03.k8s.local | Keepalived, kubeadm | **local-lvm** |
@@ -274,15 +271,10 @@ rm -rf ~/.ansible/cp/*
 | kosa22 | 2246 | k8s-worker-02   | 172.16.30.46 | node-02.k8s.local | kubelet | rbd-storage |
 | kosa23 | 2347 | k8s-worker-03   | 172.16.30.47 | node-03.k8s.local | kubelet | rbd-storage |
 | kosa24 | 2455 | cicd-01         | 172.16.30.55 | gitea.mgmt.local | Gitea | rbd-storage |
-| - | - | DB VIP          | 172.16.30.60 | db-cluster.svc.local | Percona XtraDB Cluster | - |
-| kosa23 | 2361 | proxysql-01     | 172.16.30.61 | sql-01.svc.local | ProxySQL | rbd-storage |
-| kosa24 | 2462 | proxysql-02     | 172.16.30.62 | sql-02.svc.local | ProxySQL | rbd-storage |
-| kosa21 | 2165 | percona-01      | 172.16.30.65 | percona-01.svc.local | Percona XtraDB Cluster (PXC) | rbd-storage |
-| kosa22 | 2266 | percona-02      | 172.16.30.66 | percona-02.svc.local | Percona XtraDB Cluster (PXC) | rbd-storage |
-| kosa23 | 2367 | percona-03      | 172.16.30.67 | percona-03.svc.local | Percona XtraDB Cluster (PXC) | rbd-storage |
 | kosa24 | 2470 | minio-01        | 172.16.30.70 | minio.mgmt.local | MinIO (Terraform Backend) | rbd-storage |
-| kosa22 | 2290 | siem-01         | 172.16.30.90 | siem.mgmt.local | Wazuh | rbd-storage |
-| kosa23 | 2395 | monitor-01      | 172.16.30.95 | monitor.mgmt.local | PLG Stack | rbd-storage |
+| kosa22 | 2290 | siem-01         | 172.16.30.85 | siem.mgmt.local | Wazuh | rbd-storage |
+| - | - | PLG VIP     | 172.16.30.90 | - | - | - |
+| kosa23 | 2396 | monitor-01      | 172.16.30.91 | monitor.mgmt.local | PLG Stack | rbd-storage |
 
 **VIP 리스트**
 | 서비스 | VIP | DNS 알리아스 | 비고 |
@@ -291,7 +283,7 @@ rm -rf ~/.ansible/cp/*
 | Vault VIP | 172.16.30.20 | vault.sec.local | HashiCorp Vault HA |
 | HAProxy VIP | 172.16.20.25 | haproxy.svc.local | 외부 접점 |
 | K8s VIP | 172.16.30.30 | - | API Server HA |
-| DB VIP | 172.16.30.60 | db-cluster.svc.local | Percona XtraDB Cluster |
+| PLG VIP | 172.16.30.90 | monitor.mgmt.local | 모니터링 HA (예정) |
 
 ### 자동 구성 명세 (test)
 
