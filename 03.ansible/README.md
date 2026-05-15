@@ -200,7 +200,7 @@ bash 03.ansible/03-deploy-to-control.sh
 
 ### 0. 컨트롤 노드에 파일 배포
 ```bash
-# 로컬에서 실행 — 컨트롤 노드 생성(03-create-control-node.sh) 완료 후 수행
+# 로컬에서 실행
 bash 03.ansible/03-deploy-to-control.sh
 ```
 
@@ -245,9 +245,9 @@ rm -rf ~/.ansible/cp/*
 
 | 호스트 | VM ID | VM name | IP | DNS | 주요 스택 |
 |---|---|---|---|---|---|
-| kosa21 | 2002 | pfSense  | 172.16.20.5  | firewall.edge.local | 방화벽, NAT, WireGuard VPN (Proxmox VM 방화벽은 비활성화) |
+| kosa21 | 2002 | pfSense  | 172.16.20.5  | firewall.edge.local | 방화벽, NAT, WireGuard VPN |
 | kosa21 | 2210 | Control  | 172.16.30.7  | ctrl.mgmt.local | Terraform, Ansible, etcd |
-| kosa24 | 2475 | Test/Sec | 172.16.30.75 | stress.mgmt.local | Kali Linux (k6, Locust) |
+| kosa24 | 2475 | Test/Sec | 172.16.30.75 | stress.mgmt.local | Kali Linux (k6, Locust 등) |
 
 
 ### 자동 구성 명세 (prod)
