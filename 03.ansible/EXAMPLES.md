@@ -1,253 +1,145 @@
-# 실행 예시
+# EXAMPLES
 
-컨트롤 노드(`172.16.30.7`) 홈 디렉토리에서 실행하는 전체 예시 모음.
+컨트롤 노드의 홈 디렉토리에서 실행하는 전체 예시 모음
 
+- [Terraform](#terraform)
+- [Ansible](#ansible)
 
 ## Terraform
 
-### prod 환경
-
+### 운영 환경 (prod)
 ```bash
-# 전체 배포
+# 전체 VM 생성 (all)
 ~/workspace/terraform/02-run.sh prod apply all
 
-# 역할별 개별 배포
+# 개별 그룹 생성 (dns, k8s 등)
 ~/workspace/terraform/02-run.sh prod apply dns
-~/workspace/terraform/02-run.sh prod apply haproxy
-~/workspace/terraform/02-run.sh prod apply vault
-~/workspace/terraform/02-run.sh prod apply services
-
-# k8s: 마스터 3 + 워커 3 한 번에 배포
 ~/workspace/terraform/02-run.sh prod apply k8s
 
-# k8s: 개별 배포
-~/workspace/terraform/02-run.sh prod apply k8s-master
-~/workspace/terraform/02-run.sh prod apply k8s-worker
+# 특정 VM 1대만 생성
+~/workspace/terraform/02-run.sh prod apply all dns1
 
-# 특정 VM 1대만 배포
-~/workspace/terraform/02-run.sh prod apply dns dns1
-
-# 전체 삭제
+# 전체 VM 제거 (주의)
 ~/workspace/terraform/02-run.sh prod destroy all
+
+# 캐싱 제거 (상태 꼬임 발생 시)
+rm -rf ~/workspace/terraform/env/prod/.terraform/ ~/workspace/terraform/env/prod/.terraform.lock.hcl
 ```
 
-### test 환경 (VMID: 1xxxx, IP: .1xx)
-
+### 테스트 환경 (test)
 ```bash
-# 전체 배포
+# 전체 VM 생성
 ~/workspace/terraform/02-run.sh test apply all
 
-# 역할별 개별 배포
-~/workspace/terraform/02-run.sh test apply dns
+# 개별 그룹 생성
 ~/workspace/terraform/02-run.sh test apply k8s
-~/workspace/terraform/02-run.sh test apply k8s-master
-~/workspace/terraform/02-run.sh test apply k8s-worker
 
-# 전체 삭제
+# 전체 VM 제거
 ~/workspace/terraform/02-run.sh test destroy all
+
+# 캐싱 제거
+rm -rf ~/workspace/terraform/env/test/.terraform/ ~/workspace/terraform/env/test/.terraform.lock.hcl
+```
+
+### 강제 리소스 정리
+
+**방법 1: 스크립트 실행**
+Terraform `destroy`로 지워지지 않는 유령 VM 및 RBD 락 발생 시 사용
+```bash
+# 특정 노드 전체 정리
+bash ~/workspace/terraform/02-force-destroy-all.sh kosa21
+
+# 특정 노드의 특정 VMID만 정리
+bash ~/workspace/terraform/02-force-destroy-all.sh kosa21 2131
+```
+
+**방법 2: Proxmox 호스트 수동 제거**
+스크립트 작동 불능 시 해당 Proxmox 호스트 쉘에서 직접 실행
+```bash
+# VMID 2211인 경우
+qm stop 2211 --skiplock
+qm destroy 2211 --purge
+rm -f /etc/pve/nodes/*/qemu-server/2211.conf
 ```
 
 ---
 
 ## Ansible
 
-### 핑 테스트
+### 초기 구축 (Provisioning)
+최초 1회 실행하여 전체 스택 설치
+
+> **주의**: `site.yml`은 vault, siem을 포함하지 않음 (폐쇄망 패키지 미러 구성 전까지 주석 유지)
+> vault, siem은 미러 구성 완료 후 별도 실행 필요
 
 ```bash
-# 전체
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible all -m ping
+# 전체 사이트 구축 (vault, siem 제외)
+ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook -i ~/workspace/ansible/inventories/prod/hosts ~/workspace/ansible/playbooks/site.yml
 
-# 그룹별
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible dns_servers -m ping
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible k8s_masters -m ping
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible k8s_workers -m ping
+# 특정 역할만 초기 구축
+ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook -i ~/workspace/ansible/inventories/prod/hosts ~/workspace/ansible/playbooks/dns.yml
+ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook -i ~/workspace/ansible/inventories/prod/hosts ~/workspace/ansible/playbooks/minio.yml
 ```
 
-### 플레이북 실행 (Test 환경 퀵 가이드)
+### DB 클러스터 초기 구축
+
+> **주의**: PXC는 반드시 아래 순서를 지켜야 함. 순서 틀리면 클러스터 broken 상태 발생
 
 ```bash
-# DNS 설정
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook -i ~/workspace/ansible/inventories/test/hosts ~/workspace/ansible/playbooks/dns.yml
-
-# K8s 클러스터 구성
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook -i ~/workspace/ansible/inventories/test/hosts ~/workspace/ansible/playbooks/k8s.yml
-```
-
-
-### k8s 클러스터 구성 순서
-
-#### prod: 마스터 3 + 워커 3 동시 (권장)
-
-```bash
-~/workspace/terraform/02-run.sh prod apply k8s
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook ~/workspace/ansible/playbooks/k8s.yml
-```
-
-#### test: 마스터 1 + 워커 1 단계별 (IP: .130, .141)
-
-```bash
-# 1. 마스터 프로비저닝 + 초기화 (172.16.30.130)
-~/workspace/terraform/02-run.sh test apply k8s-master
+# 1단계: 첫 번째 노드만 bootstrap 모드로 시작
 ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook \
-  -i ~/workspace/ansible/inventories/test/hosts \
-  ~/workspace/ansible/playbooks/k8s.yml --limit k8s_masters
+  -i ~/workspace/ansible/inventories/prod/hosts \
+  ~/workspace/ansible/playbooks/db.yml \
+  --limit 172.16.30.65 -e pxc_bootstrap=true
 
-# 2. 워커 프로비저닝 + 조인 (172.16.30.141)
-~/workspace/terraform/02-run.sh test apply k8s-worker
+# 2단계: 나머지 노드 조인 (첫 번째 노드가 running 상태일 때 실행)
 ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook \
-  -i ~/workspace/ansible/inventories/test/hosts \
-  ~/workspace/ansible/playbooks/k8s.yml --limit k8s_workers
+  -i ~/workspace/ansible/inventories/prod/hosts \
+  ~/workspace/ansible/playbooks/db.yml \
+  --limit 172.16.30.66,172.16.30.67
+
+# 3단계: 부트스트랩 노드를 일반 모드로 재시작 (bootstrap.service → mysql)
+ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook \
+  -i ~/workspace/ansible/inventories/prod/hosts \
+  ~/workspace/ansible/playbooks/db.yml \
+  --limit 172.16.30.65
+
+# 4단계: ProxySQL 설치 (db_nodes 클러스터 정상 확인 후)
+# ProxySQL 백엔드 등록은 최초 1회 수동 설정 필요 (OPERATIONS.md 참조)
+ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook \
+  -i ~/workspace/ansible/inventories/prod/hosts \
+  ~/workspace/ansible/playbooks/db.yml \
+  --limit proxysql
 ```
 
+### 운영 및 변경 (Operation)
+구축 완료 후 설정 변경 또는 패치 적용
 
-
----
-
-## prod 전체 구성 시나리오
-
-### 1. 기초 인프라 (VLAN 30)
-
+**1. 설정 파일 업데이트 (Tag 사용)**
+전체 실행 대신 특정 역할의 설정만 갱신
 ```bash
-# DNS 서버 생성
-~/workspace/terraform/02-run.sh prod apply dns
-
-# DNS/etcd 설정
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook ~/workspace/ansible/playbooks/dns.yml
+# HAProxy 설정만 갱신
+ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook -i ~/workspace/ansible/inventories/prod/hosts ~/workspace/ansible/playbooks/haproxy.yml --tags config
 ```
 
-### 2. 외부 관문 (VLAN 20)
-
+**2. 특정 노드 유지보수 (Limit 사용)**
+특정 서버 1대만 패치 또는 재시작
 ```bash
-# HAProxy 서버 생성
-~/workspace/terraform/02-run.sh prod apply haproxy
-
-# HAProxy/VIP 설정
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook ~/workspace/ansible/playbooks/haproxy.yml
+# 31번 마스터 노드만 작업
+ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook -i ~/workspace/ansible/inventories/prod/hosts ~/workspace/ansible/playbooks/k8s.yml --limit 172.16.30.31
 ```
 
-### 3. K8s 클러스터 (VLAN 30)
+### 구성 변경 가이드
+| 구분 | 수정 가능 (Apply) | 재생성 필요 (Destroy & Apply) |
+|---|---|---|
+| **Terraform** | CPU/RAM 할당량, 태그 | **IP 주소, 호스트네임, VM ID, 스토리지 크기(축소)** |
+| **Ansible** | 서비스 설정(conf), 패키지 설치, 유저 | **OS 커널 변경, 파일시스템 레이아웃 변경** |
 
+### 복구 및 제거
 ```bash
-# K8s 노드 전체 생성
-~/workspace/terraform/02-run.sh prod apply k8s
+# K8s 노드 리셋
+ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook -i ~/workspace/ansible/inventories/prod/hosts ~/workspace/ansible/playbooks/ops/k8s-reset.yml --limit <IP>
 
-# K8s 핑 테스트
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible k8s_cluster -m ping
-
-# K8s 클러스터 구성
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook ~/workspace/ansible/playbooks/k8s.yml
+# SSH 소켓 캐시 제거 (접속 에러 시)
+rm -rf ~/.ansible/cp/*
 ```
-
-### 4. 기타 서비스 (보안/저장소/모니터링)
-
-```bash
-# Vault 서버 생성 및 설정
-~/workspace/terraform/02-run.sh prod apply vault
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook ~/workspace/ansible/playbooks/vault.yml
-
-# CICD 서버 생성 및 설정
-~/workspace/terraform/02-run.sh prod apply cicd
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook ~/workspace/ansible/playbooks/cicd.yml
-
-# Registry(Harbor) 서버 생성 및 설정
-~/workspace/terraform/02-run.sh prod apply registry
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook ~/workspace/ansible/playbooks/registry.yml
-
-# SIEM(Wazuh) 서버 생성 및 설정
-~/workspace/terraform/02-run.sh prod apply siem
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook ~/workspace/ansible/playbooks/siem.yml
-
-# Monitoring(PLG) 서버 생성 및 설정
-~/workspace/terraform/02-run.sh prod apply monitor
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook ~/workspace/ansible/playbooks/monitor.yml
-```
-
-
----
-
-## 운영 (ops)
-
-플레이북은 공통으로 사용하고, `-i` 옵션으로 환경(prod/test)만 전환한다.
-
-### 보안 패치 (Rolling Update)
-
-```bash
-# prod — 한 번에 1대씩 순차 패치 (서비스 중단 방지)
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg \
-ansible-playbook -i ~/workspace/ansible/inventories/prod/hosts \
-  ~/workspace/ansible/playbooks/ops/patch.yml
-
-# test
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg \
-ansible-playbook -i ~/workspace/ansible/inventories/test/hosts \
-  ~/workspace/ansible/playbooks/ops/patch.yml
-```
-
-### K8s 워커 노드 추가 (Scale Out)
-
-```bash
-# 1. tfvars에 신규 워커 정보 추가 후 프로비저닝
-~/workspace/terraform/02-run.sh prod apply k8s-worker
-
-# 2. 신규 노드만 대상으로 앤서블 실행 (기존 노드 영향 없음)
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg \
-ansible-playbook -i ~/workspace/ansible/inventories/prod/hosts \
-  ~/workspace/ansible/playbooks/ops/add-worker.yml --limit 172.16.30.44
-```
-
-### 설정 동기화 (Configuration Drift 복구)
-
-누군가 서버를 직접 수정했을 경우, 앤서블 코드 기준으로 되돌린다.
-
-```bash
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg \
-ansible-playbook -i ~/workspace/ansible/inventories/prod/hosts \
-  ~/workspace/ansible/playbooks/ops/sync.yml
-```
-
----
-
-## Terraform — 초기 프로비저닝 vs 운영
-
-### 초기 프로비저닝 (최초 1회)
-
-VM을 새로 만드는 단계. tfvars에 VM 정보를 추가하고 `apply` 실행.
-
-```bash
-# 역할별 순차 생성 (권장 순서)
-~/workspace/terraform/02-run.sh prod apply dns
-~/workspace/terraform/02-run.sh prod apply haproxy
-~/workspace/terraform/02-run.sh prod apply k8s
-~/workspace/terraform/02-run.sh prod apply vault
-~/workspace/terraform/02-run.sh prod apply services
-```
-
-### 운영 중 변경
-
-이미 떠 있는 VM의 **스펙(메모리·CPU·디스크)** 을 변경할 때 사용.
-재생성 없이 변경된 부분만 적용된다.
-
-```bash
-# tfvars 수정 후 (예: 메모리 4096 → 8192)
-~/workspace/terraform/02-run.sh prod apply k8s
-
-# 변경 내용 사전 확인 (실제 적용 전)
-~/workspace/terraform/02-run.sh prod plan k8s
-```
-
-> **주의**: VM 이름(`key`) 또는 VMID를 변경하면 Terraform이 기존 VM을 삭제하고 재생성한다.
-> 스펙 변경만 할 경우 반드시 이름·VMID는 그대로 유지할 것.
-
-### 특정 VM 1대만 제거
-
-```bash
-terraform -chdir=~/workspace/terraform/env/prod \
-  destroy -target='module.vms.proxmox_virtual_environment_vm.ubuntu["k8s-worker-03"]'
-```
-
-### 운영 중 금지 명령어
-
-| 명령어 | 사유 |
-|---|---|
-| `destroy all` | 전체 삭제 — 운영 중 절대 실행 금지 |
-| `destroy k8s` | K8s 노드 전체 삭제 — 데이터 유실 위험 |
