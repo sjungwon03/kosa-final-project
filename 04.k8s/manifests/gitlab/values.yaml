@@ -2,6 +2,8 @@ global:
   hosts:
     domain: mgmt.local
     https: false
+  ingress:
+    configureCertmanager: false
   initialRootPassword:
     secret: gitlab-initial-root-password
     key: password
@@ -25,8 +27,12 @@ nginx-ingress:
   enabled: false
 
 certmanager:
+  install: false
   installCRDs: false
   createIssuers: false
+
+certmanager-issuer:
+  enabled: false
   email: admin@mgmt.local
 
 prometheus:
