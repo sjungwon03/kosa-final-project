@@ -23,6 +23,7 @@ variable "vms" {
     cores          = optional(number, 2)
     memory         = optional(number, 2048)
     disk_size      = optional(number, 10)
+    datastore_id   = optional(string, "rbd-storage")
     template_vm_id = optional(number, 9003)
   }))
   default     = {}

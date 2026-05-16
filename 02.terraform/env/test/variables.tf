@@ -29,6 +29,7 @@ variable "vms" {
     cores          = optional(number, 2)
     memory         = optional(number, 2048)
     disk_size      = optional(number, 10)
+    datastore_id   = optional(string, "rbd-storage")
     template_vm_id = optional(number, 9003)
   }))
   description = "배포할 VM 목록 — 반드시 -var-file로 주입 (tfvars/ 참고)"

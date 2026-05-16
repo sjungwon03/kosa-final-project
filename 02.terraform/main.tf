@@ -38,7 +38,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu" {
   }
 
   disk {
-    datastore_id = "rbd-storage"
+    datastore_id = each.value.datastore_id
     interface    = "scsi0"
     size         = each.value.disk_size
     discard      = "on"
