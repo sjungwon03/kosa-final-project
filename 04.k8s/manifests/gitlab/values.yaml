@@ -1,18 +1,20 @@
 global:
   hosts:
-    domain: 172.16.30.30.nip.io
+    domain: mgmt.local
     https: false
-  ingress:
-    configureCertmanager: false
-  initialRootPassword: "GitLabRoot123"
+  initialRootPassword: "kosa1004"
 
 gitlab:
   webservice:
     replicaCount: 1
+    service:
+      type: LoadBalancer
   sidekiq:
     replicaCount: 1
   gitlab-shell:
     replicaCount: 1
+    service:
+      type: LoadBalancer
 
 nginx-ingress:
   enabled: false
@@ -20,8 +22,6 @@ nginx-ingress:
 certmanager:
   installCRDs: false
   createIssuers: false
-  issuer:
-    email: admin@kosa.local
 
 prometheus:
   install: false

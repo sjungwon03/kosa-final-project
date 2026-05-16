@@ -5,13 +5,15 @@ argo-cd:
     replicas: 1
     extraArgs:
       - --insecure
+    service:
+      type: LoadBalancer
   repoServer:
     replicas: 1
-  
+
   configs:
     params:
       server:
         insecure: true
-  
+
   nodeSelector:
     role: platform

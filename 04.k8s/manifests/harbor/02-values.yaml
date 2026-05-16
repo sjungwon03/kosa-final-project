@@ -1,15 +1,13 @@
 expose:
-  type: nodePort
-  nodePort:
-    ports:
-      http:
-        nodePort: 30002
+  type: loadBalancer
+  loadBalancer:
+    IP: ""
   tls:
     enabled: false
 
-externalURL: http://172.16.30.30:30002/
+externalURL: http://harbor.mgmt.local
 
-harborAdminPassword: "admin123"
+harborAdminPassword: "kosa1004"
 persistence:
   enabled: true
   persistentVolumeClaim:
