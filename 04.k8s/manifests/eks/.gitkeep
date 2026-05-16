@@ -1,0 +1,3 @@
+# EKS 클라우드 버스팅용 서비스 배치
+# 필요한 서비스 yaml을 이 폴더에 추가
+# 예: backend/, monitoring/, redis/ 등

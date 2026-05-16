@@ -1,0 +1,31 @@
+expose:
+  type: nodePort
+  nodePort:
+    ports:
+      http:
+        nodePort: 30002
+  tls:
+    enabled: false
+
+externalURL: http://172.16.30.30:30002/
+
+harborAdminPassword: "admin123"
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    registry:
+      storageClass: "local-path"
+    database:
+      storageClass: "local-path"
+    redis:
+      storageClass: "local-path"
+    trivy:
+      storageClass: "local-path"
+    chartmuseum:
+      storageClass: "local-path"
+
+trivy:
+  enabled: true
+
+chartmuseum:
+  enabled: true

@@ -1,0 +1,17 @@
+argo-cd:
+  controller:
+    replicas: 1
+  server:
+    replicas: 1
+    extraArgs:
+      - --insecure
+  repoServer:
+    replicas: 1
+  
+  configs:
+    params:
+      server:
+        insecure: true
+  
+  nodeSelector:
+    role: platform
