@@ -27,8 +27,6 @@ nginx-ingress:
 certmanager:
   installCRDs: false
   createIssuers: false
-
-certmanager-issuer:
   email: admin@mgmt.local
 
 prometheus:
