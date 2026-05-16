@@ -2,7 +2,9 @@ global:
   hosts:
     domain: mgmt.local
     https: false
-  initialRootPassword: "kosa1004"
+  initialRootPassword:
+    secret: gitlab-initial-root-password
+    key: password
 
 gitlab:
   webservice:
@@ -15,6 +17,9 @@ gitlab:
     replicaCount: 1
     service:
       type: LoadBalancer
+  initialRootPassword:
+    secret: gitlab-initial-root-password
+    key: password
 
 nginx-ingress:
   enabled: false
@@ -22,6 +27,9 @@ nginx-ingress:
 certmanager:
   installCRDs: false
   createIssuers: false
+
+certmanager-issuer:
+  email: admin@mgmt.local
 
 prometheus:
   install: false

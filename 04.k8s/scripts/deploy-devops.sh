@@ -41,6 +41,11 @@ install_helm_chart() {
   
   echo "[$(date '+%F %T')] Installing $name with Helm..."
   
+  # Secret 배포 (있는 경우)
+  if [ -f "${chart_dir}/00-secret.yaml" ]; then
+    kubectl apply -f "${chart_dir}/00-secret.yaml" -n $NAMESPACE
+  fi
+  
   if [ ! -f "${chart_dir}/Chart.yaml" ]; then
     echo "ERROR: Chart.yaml not found in ${chart_dir}"
     exit 1
