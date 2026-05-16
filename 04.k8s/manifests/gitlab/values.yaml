@@ -33,4 +33,4 @@ registry:
   enabled: false
 
 nodeSelector:
-  role: platform
+  kubernetes.io/hostname: k8s-worker-plat

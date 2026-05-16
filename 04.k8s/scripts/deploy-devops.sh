@@ -23,7 +23,7 @@ if [[ "$ACTION" != "install" && "$ACTION" != "uninstall" ]]; then
   exit 1
 fi
 
-NAMESPACE="platform"
+NAMESPACE="devops"
 
 create_namespace() {
   kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
@@ -37,59 +37,26 @@ install_metallb() {
 install_helm_chart() {
   local name=$1
   local chart_dir=$2
+  local values_file="${chart_dir}/values.yaml"
   
-  if [ -f "${chart_dir}/Chart.yaml" ]; then
-    echo "[$(date '+%F %T')] Installing $name with Helm (from chart dir)..."
-    helm dependency update "$chart_dir" || true
+  echo "[$(date '+%F %T')] Installing $name with Helm..."
+  
+  if [ ! -f "${chart_dir}/Chart.yaml" ]; then
+    echo "ERROR: Chart.yaml not found in ${chart_dir}"
+    exit 1
+  fi
+  
+  helm dependency update "$chart_dir" || true
+  
+  if [ -f "$values_file" ]; then
     helm $ACTION $name "$chart_dir" \
       --namespace $NAMESPACE \
-      --timeout 600s \
-      $( [ -f "${chart_dir}/values.yaml" ] && echo "-f ${chart_dir}/values.yaml" )
+      -f "$values_file" \
+      --timeout 600s
   else
-    echo "[$(date '+%F %T')] Direct Helm install for $name..."
-    case $name in
-      harbor)
-        helm $ACTION harbor harbor/harbor \
-          --namespace $NAMESPACE \
-          --set expose.type=loadBalancer \
-          --set expose.tls.enabled=false \
-          --set externalURL=http://harbor.mgmt.local \
-          --set harborAdminPassword=admin123 \
-          --set persistence.enabled=true \
-          --timeout 300s
-        ;;
-      gitlab)
-        helm $ACTION gitlab gitlab/gitlab \
-          --namespace $NAMESPACE \
-          --set global.hosts.domain=mgmt.local \
-          --set global.hosts.https=false \
-          --set global.initialRootPassword=GitLabRoot123 \
-          --set gitlab.webservice.replicaCount=1 \
-          --set gitlab.webservice.service.type=LoadBalancer \
-          --set gitlab.sidekiq.replicaCount=1 \
-          --set gitlab.gitlab-shell.replicaCount=1 \
-          --set gitlab.gitlab-shell.service.type=LoadBalancer \
-          --set nginx-ingress.enabled=false \
-          --set prometheus.install=false \
-          --set certmanager.installCRDs=false \
-          --set nodeSelector.role=platform \
-          --timeout 600s \
-          --version 7.0.0
-        ;;
-      argocd)
-        helm $ACTION argocd argo/argo-cd \
-          --namespace $NAMESPACE \
-          --set controller.replicas=1 \
-          --set server.replicas=1 \
-          --set server.extraArgs[0]=--insecure \
-          --set server.service.type=LoadBalancer \
-          --set repoServer.replicas=1 \
-          --set configs.params.server.insecure=true \
-          --set nodeSelector.role=platform \
-          --timeout 300s \
-          --version 5.46.0
-        ;;
-    esac
+    helm $ACTION $name "$chart_dir" \
+      --namespace $NAMESPACE \
+      --timeout 600s
   fi
 }
 

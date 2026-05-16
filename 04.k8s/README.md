@@ -50,17 +50,17 @@ Helm chart 기반 서비스 배포 (MetalLB LoadBalancer)
 
 ```bash
 # MetalLB IP Pool: 172.16.30.200-172.16.30.210
-kubectl get svc -n platform
+kubectl get svc -n devops
 
 # Harbor LoadBalancer IP
-kubectl get svc harbor -n platform
+kubectl get svc harbor -n devops
 
 # GitLab LoadBalancer IP
-kubectl get svc gitlab-webservice -n platform
-kubectl get svc gitlab-gitlab-shell -n platform
+kubectl get svc gitlab-webservice -n devops
+kubectl get svc gitlab-gitlab-shell -n devops
 
 # ArgoCD LoadBalancer IP
-kubectl get svc argo-cd-argocd-server -n platform
+kubectl get svc argo-cd-argocd-server -n devops
 ```
 
 ## DNS 등록
@@ -77,7 +77,7 @@ argocd.mgmt.local    IN A    <ARGOCD_LB_IP>
 
 | 서비스   | DNS                   | 계정             |
 |----------|----------------------|------------------|
-| Harbor   | harbor.mgmt.local    | admin/admin123   |
+| Harbor   | harbor.mgmt.local    | admin/kosa1004   |
 | GitLab   | gitlab.mgmt.local    | root/GitLabRoot123 |
 | ArgoCD   | argocd.mgmt.local    | admin            |
 
