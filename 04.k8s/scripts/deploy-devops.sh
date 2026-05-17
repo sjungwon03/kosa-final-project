@@ -23,22 +23,25 @@ if [[ "$ACTION" != "install" && "$ACTION" != "uninstall" ]]; then
   exit 1
 fi
 
-NAMESPACE="devops"
+DEVOPS_NAMESPACE="devops"
+DATABASE_NAMESPACE="database"
 
 create_namespace() {
-  kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
+  local namespace=$1
+  kubectl create namespace "$namespace" --dry-run=client -o yaml | kubectl apply -f -
 }
 
 install_helm_chart() {
   local name=$1
   local chart_dir=$2
+  local namespace=$3
   local values_file="${chart_dir}/values.yaml"
   
   echo "[$(date '+%F %T')] Installing $name with Helm..."
   
   # Secret 배포 (있는 경우)
   if [ -f "${chart_dir}/00-secret.yaml" ]; then
-    kubectl apply -f "${chart_dir}/00-secret.yaml" -n $NAMESPACE
+    kubectl apply -f "${chart_dir}/00-secret.yaml" -n "$namespace"
   fi
   
   if [ ! -f "${chart_dir}/Chart.yaml" ]; then
@@ -50,17 +53,17 @@ install_helm_chart() {
   
   if [ -f "$values_file" ]; then
     helm $ACTION $name "$chart_dir" \
-      --namespace $NAMESPACE \
+      --namespace "$namespace" \
       -f "$values_file" \
       --timeout 600s
   else
     helm $ACTION $name "$chart_dir" \
-      --namespace $NAMESPACE \
+      --namespace "$namespace" \
       --timeout 600s
   fi
 }
 
-create_namespace
+create_namespace "$DEVOPS_NAMESPACE"
 
 if [ -n "$COMPONENT" ]; then
   case $COMPONENT in
@@ -73,16 +76,17 @@ if [ -n "$COMPONENT" ]; then
       exit 1
       ;;
     harbor)
-      install_helm_chart harbor "${MANIFESTS_DIR}/harbor"
+      install_helm_chart harbor "${MANIFESTS_DIR}/harbor" "$DEVOPS_NAMESPACE"
       ;;
     percona-db)
-      install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db"
+      create_namespace "$DATABASE_NAMESPACE"
+      install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db" "$DATABASE_NAMESPACE"
       ;;
     gitea)
-      install_helm_chart gitea "${MANIFESTS_DIR}/gitea"
+      install_helm_chart gitea "${MANIFESTS_DIR}/gitea" "$DEVOPS_NAMESPACE"
       ;;
     argocd)
-      install_helm_chart argocd "${MANIFESTS_DIR}/argocd"
+      install_helm_chart argocd "${MANIFESTS_DIR}/argocd" "$DEVOPS_NAMESPACE"
       ;;
     *)
       echo "ERROR: Unknown component: $COMPONENT"
@@ -90,10 +94,11 @@ if [ -n "$COMPONENT" ]; then
       ;;
   esac
 else
-  install_helm_chart harbor "${MANIFESTS_DIR}/harbor"
-  install_helm_chart gitea "${MANIFESTS_DIR}/gitea"
-  install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db"
-  install_helm_chart argocd "${MANIFESTS_DIR}/argocd"
+  create_namespace "$DATABASE_NAMESPACE"
+  install_helm_chart harbor "${MANIFESTS_DIR}/harbor" "$DEVOPS_NAMESPACE"
+  install_helm_chart gitea "${MANIFESTS_DIR}/gitea" "$DEVOPS_NAMESPACE"
+  install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db" "$DATABASE_NAMESPACE"
+  install_helm_chart argocd "${MANIFESTS_DIR}/argocd" "$DEVOPS_NAMESPACE"
 fi
 
 echo "[$(date '+%F %T')] done"

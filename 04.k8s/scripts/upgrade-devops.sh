@@ -4,7 +4,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MANIFESTS_DIR="${SCRIPT_DIR}/../manifests"
-NAMESPACE="devops"
+DEVOPS_NAMESPACE="devops"
+DATABASE_NAMESPACE="database"
 TIMEOUT="${HELM_TIMEOUT:-900s}"
 WAIT_ARGS="--wait --timeout ${TIMEOUT}"
 
@@ -40,11 +41,13 @@ log() {
 }
 
 ensure_namespace() {
-  kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+  local namespace="$1"
+  kubectl create namespace "${namespace}" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 }
 
 apply_optional_secret() {
   local chart_dir="$1"
+  local namespace="$2"
   local candidate
 
   for candidate in \
@@ -53,7 +56,7 @@ apply_optional_secret() {
     "${chart_dir}/harbor-secret.yaml"; do
     if [[ -f "${candidate}" ]]; then
       log "Applying secret manifest: ${candidate}"
-      kubectl apply -n "${NAMESPACE}" -f "${candidate}"
+      kubectl apply -n "${namespace}" -f "${candidate}"
     fi
   done
 }
@@ -61,6 +64,7 @@ apply_optional_secret() {
 upgrade_chart() {
   local release="$1"
   local chart_dir="$2"
+  local namespace="$3"
   local values_file="${chart_dir}/values.yaml"
 
   if [[ ! -f "${chart_dir}/Chart.yaml" ]]; then
@@ -71,57 +75,60 @@ upgrade_chart() {
   log "Updating dependencies: ${release}"
   helm dependency update "${chart_dir}" || true
 
-  apply_optional_secret "${chart_dir}"
+  apply_optional_secret "${chart_dir}" "${namespace}"
 
   log "Upgrading ${release}"
   if [[ -f "${values_file}" ]]; then
     helm upgrade --install "${release}" "${chart_dir}" \
-      --namespace "${NAMESPACE}" \
+      --namespace "${namespace}" \
       --create-namespace \
       -f "${values_file}" \
       ${WAIT_ARGS}
   else
     helm upgrade --install "${release}" "${chart_dir}" \
-      --namespace "${NAMESPACE}" \
+      --namespace "${namespace}" \
       --create-namespace \
       ${WAIT_ARGS}
   fi
 }
 
 show_status() {
-  log "Helm releases"
-  helm -n "${NAMESPACE}" ls
+  for ns in "${DEVOPS_NAMESPACE}" "${DATABASE_NAMESPACE}"; do
+    log "Helm releases (${ns})"
+    helm -n "${ns}" ls || true
 
-  log "Services"
-  kubectl -n "${NAMESPACE}" get svc -o wide
+    log "Services (${ns})"
+    kubectl -n "${ns}" get svc -o wide || true
 
-  log "PVCs"
-  kubectl -n "${NAMESPACE}" get pvc
+    log "PVCs (${ns})"
+    kubectl -n "${ns}" get pvc || true
 
-  log "Pods"
-  kubectl -n "${NAMESPACE}" get pod -o wide
+    log "Pods (${ns})"
+    kubectl -n "${ns}" get pod -o wide || true
+  done
 }
 
-ensure_namespace
+ensure_namespace "${DEVOPS_NAMESPACE}"
+ensure_namespace "${DATABASE_NAMESPACE}"
 
 case "${COMPONENT}" in
   all)
-    upgrade_chart harbor "${MANIFESTS_DIR}/harbor"
-    upgrade_chart gitea "${MANIFESTS_DIR}/gitea"
-    upgrade_chart percona-db "${MANIFESTS_DIR}/percona-db"
-    upgrade_chart argocd "${MANIFESTS_DIR}/argocd"
+    upgrade_chart harbor "${MANIFESTS_DIR}/harbor" "${DEVOPS_NAMESPACE}"
+    upgrade_chart gitea "${MANIFESTS_DIR}/gitea" "${DEVOPS_NAMESPACE}"
+    upgrade_chart percona-db "${MANIFESTS_DIR}/percona-db" "${DATABASE_NAMESPACE}"
+    upgrade_chart argocd "${MANIFESTS_DIR}/argocd" "${DEVOPS_NAMESPACE}"
     ;;
   harbor)
-    upgrade_chart harbor "${MANIFESTS_DIR}/harbor"
+    upgrade_chart harbor "${MANIFESTS_DIR}/harbor" "${DEVOPS_NAMESPACE}"
     ;;
   gitea)
-    upgrade_chart gitea "${MANIFESTS_DIR}/gitea"
+    upgrade_chart gitea "${MANIFESTS_DIR}/gitea" "${DEVOPS_NAMESPACE}"
     ;;
   percona-db)
-    upgrade_chart percona-db "${MANIFESTS_DIR}/percona-db"
+    upgrade_chart percona-db "${MANIFESTS_DIR}/percona-db" "${DATABASE_NAMESPACE}"
     ;;
   argocd)
-    upgrade_chart argocd "${MANIFESTS_DIR}/argocd"
+    upgrade_chart argocd "${MANIFESTS_DIR}/argocd" "${DEVOPS_NAMESPACE}"
     ;;
   *)
     echo "ERROR: unknown component: ${COMPONENT}" >&2

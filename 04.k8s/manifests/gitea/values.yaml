@@ -4,9 +4,6 @@ gitea:
     password: "kosa1004"
     email: admin@mgmt.local
 
-  actions:
-    enabled: true
-
   ingress:
     enabled: false
 
@@ -23,16 +20,6 @@ gitea:
 
   nodeSelector:
     kubernetes.io/hostname: k8s-worker-plat
-
-  actRunner:
-    enabled: true
-    replicas: 1
-    container:
-      privileged: true
-    registration:
-      create: true
-      labels:
-        - "k8s:docker://node:20-bookworm"
 
 postgresql:
   enabled: true

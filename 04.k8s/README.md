@@ -62,10 +62,10 @@ kubectl get svc -n devops | grep -E 'harbor|gitea|percona|argo'
 
 ```text
 # 클러스터 내부
-percona-db-pxc-db-haproxy.devops.svc.cluster.local:3306
+percona-db-pxc-db-haproxy.database.svc.cluster.local:3306
 
 # 클러스터 외부
-kubectl -n devops get svc | grep percona-db
+kubectl -n database get svc | grep percona-db
 ```
 
 ## DNS 등록 예시

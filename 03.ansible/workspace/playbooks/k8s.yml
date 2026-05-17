@@ -198,10 +198,23 @@
       run_once: true
       when: metallb_enabled_safe
 
-    - name: MetalLB 네이티브 매니페스트 적용
-      ansible.builtin.command: "kubectl apply -f {{ metallb_manifest_url_safe }}"
-      run_once: true
-      when: metallb_enabled_safe
+    - name: MetalLB 네이티브 매니페스트 적용 (selector 충돌 시 재생성)
+      block:
+        - name: MetalLB 네이티브 매니페스트 적용
+          ansible.builtin.command: "kubectl apply -f {{ metallb_manifest_url_safe }}"
+          run_once: true
+          when: metallb_enabled_safe
+      rescue:
+        - name: MetalLB controller/speaker 삭제 (immutable selector 충돌 복구)
+          ansible.builtin.command: >
+            kubectl -n {{ metallb_namespace_safe }} delete deploy/controller ds/speaker --ignore-not-found=true
+          run_once: true
+          when: metallb_enabled_safe
+
+        - name: MetalLB 네이티브 매니페스트 재적용
+          ansible.builtin.command: "kubectl apply -f {{ metallb_manifest_url_safe }}"
+          run_once: true
+          when: metallb_enabled_safe
 
     - name: MetalLB controller rollout 대기
       ansible.builtin.command: "kubectl -n {{ metallb_namespace_safe }} rollout status deploy/controller --timeout=300s"

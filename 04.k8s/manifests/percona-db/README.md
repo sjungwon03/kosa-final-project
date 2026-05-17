@@ -9,7 +9,8 @@ Percona Helm chart(`pxc-operator`, `pxc-db`) 기반으로 MySQL 호환 클러스
 - PodAntiAffinity로 동일 역할 Pod가 서로 다른 노드에 분산
 
 ## 진입점
-- Read/Write 진입점: `percona-db-pxc-db-haproxy.devops.svc.cluster.local:3306`
+- Namespace: `database`
+- Read/Write 진입점: `percona-db-pxc-db-haproxy.database.svc.cluster.local:3306`
 - 외부 진입점: `LoadBalancer` 타입 HAProxy 서비스
 
 ## 배포
@@ -19,7 +20,7 @@ Percona Helm chart(`pxc-operator`, `pxc-db`) 기반으로 MySQL 호환 클러스
 
 ## 확인
 ```bash
-kubectl -n devops get pods | grep percona-db
-kubectl -n devops get svc | grep percona-db
-kubectl -n devops get pods -o wide | grep -E 'pxc|haproxy'
+kubectl -n database get pods | grep percona-db
+kubectl -n database get svc | grep percona-db
+kubectl -n database get pods -o wide | grep -E 'pxc|haproxy'
 ```
