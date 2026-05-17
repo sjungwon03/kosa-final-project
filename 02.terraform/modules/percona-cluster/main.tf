@@ -10,7 +10,7 @@ locals {
   proxysql_nodes = [
     for i in range(var.proxysql_nodes) : {
       name     = "${var.cluster_name}-proxysql-${i + 1}"
-      ip       = "${var.dmz_ip_prefix}.${var.proxysql_ip_start + i}"
+      ip       = "${var.internal_ip_prefix}.${var.proxysql_ip_start + i}"
       node_idx = (i + 2) % length(var.proxmox_nodes)
     }
   ]
@@ -63,10 +63,10 @@ module "proxysql" {
   storage      = var.storage
 
   network_bridge = var.network_bridge
-  vlan_tag       = var.dmz_vlan_tag
+  vlan_tag       = var.internal_vlan_tag
 
   ip_address  = "${local.proxysql_nodes[count.index].ip}/24"
-  gateway     = var.dmz_gateway
+  gateway     = var.internal_gateway
   dns_servers = var.dns_servers
 
   ssh_public_key = var.ssh_public_key
@@ -77,5 +77,5 @@ module "proxysql" {
   ha_group       = var.ha_group
   ha_state       = "started"
 
-  tags = concat(var.tags, ["proxysql", "dmz"])
+  tags = concat(var.tags, ["proxysql", "internal"])
 }

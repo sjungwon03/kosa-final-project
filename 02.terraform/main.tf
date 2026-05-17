@@ -43,18 +43,15 @@ module "percona_cluster" {
   proxysql_memory     = var.proxysql_memory
   proxysql_disk_size  = var.proxysql_disk_size
   proxysql_vmid_start = var.proxysql_vmid_start
+  proxysql_ip_start   = var.proxysql_ip_start
 
   storage = var.storage
 
   network_bridge    = var.network_bridge
-  dmz_vlan_tag      = var.dmz_vlan_tag
   internal_vlan_tag = var.internal_vlan_tag
 
-  dmz_ip_prefix      = var.dmz_ip_prefix
   internal_ip_prefix = var.internal_ip_prefix
-
-  dmz_gateway      = var.dmz_gateway
-  internal_gateway = var.internal_gateway
+  internal_gateway   = var.internal_gateway
 
   dns_servers = var.dns_servers
 
@@ -74,8 +71,6 @@ resource "local_file" "ansible_inventory" {
     percona_names      = module.percona_cluster.percona_names
     proxysql_ips       = module.percona_cluster.proxysql_ips
     proxysql_names     = module.percona_cluster.proxysql_names
-    proxysql_vip       = "${var.dmz_ip_prefix}.35"
-    dmz_ip_prefix      = var.dmz_ip_prefix
     internal_ip_prefix = var.internal_ip_prefix
   })
   filename = "${path.module}/../03.ansible/inventory/hosts.ini"
@@ -84,16 +79,6 @@ resource "local_file" "ansible_inventory" {
 resource "local_file" "cluster_info" {
   content = jsonencode({
     cluster_name = var.cluster_name
-    dmz = {
-      vlan_tag  = var.dmz_vlan_tag
-      ip_prefix = var.dmz_ip_prefix
-      gateway   = var.dmz_gateway
-      proxysql = {
-        ips   = module.percona_cluster.proxysql_ips
-        names = module.percona_cluster.proxysql_names
-        vip   = "${var.dmz_ip_prefix}.35"
-      }
-    }
     internal = {
       vlan_tag  = var.internal_vlan_tag
       ip_prefix = var.internal_ip_prefix
@@ -102,6 +87,11 @@ resource "local_file" "cluster_info" {
         ips      = module.percona_cluster.percona_ips
         names    = module.percona_cluster.percona_names
         first_ip = module.percona_cluster.percona_first_ip
+      }
+      proxysql = {
+        ips   = module.percona_cluster.proxysql_ips
+        names = module.percona_cluster.proxysql_names
+        vip   = "${var.internal_ip_prefix}.105"
       }
     }
   })

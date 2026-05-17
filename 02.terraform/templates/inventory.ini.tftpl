@@ -1,9 +1,7 @@
 [all:vars]
 ansible_user=ubuntu
 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
-dmz_ip_prefix=${dmz_ip_prefix}
 internal_ip_prefix=${internal_ip_prefix}
-proxysql_vip=${proxysql_vip}
 
 [percona]
 %{ for i, ip in percona_ips ~}
@@ -12,17 +10,15 @@ ${percona_names[i]} ansible_host=${split("/", ip)[0]} pxc_node_id=${i + 1} netwo
 
 [proxysql]
 %{ for i, ip in proxysql_ips ~}
-${proxysql_names[i]} ansible_host=${split("/", ip)[0]} network=dmz
+${proxysql_names[i]} ansible_host=${split("/", ip)[0]} network=internal
 %{ endfor ~}
 
 [bootstrap]
 ${percona_names[0]} ansible_host=${split("/", percona_ips[0])[0]} network=internal
 
-[dmz:children]
-proxysql
-
 [internal:children]
 percona
+proxysql
 
 [loadbalancers:children]
 proxysql

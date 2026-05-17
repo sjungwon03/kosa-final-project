@@ -14,18 +14,6 @@ variable "template_name" {
   default     = "ubuntu-22.04-template"
 }
 
-variable "template_vmid" {
-  description = "Template VM ID (9001)"
-  type        = number
-  default     = 9001
-}
-
-variable "clone_node" {
-  description = "Node where the template is located"
-  type        = string
-  default     = ""
-}
-
 variable "ciuser" {
   description = "Cloud-init username (kosa)"
   type        = string
@@ -98,34 +86,16 @@ variable "network_bridge" {
   default     = "vmbr1"
 }
 
-variable "dmz_vlan_tag" {
-  description = "DMZ VLAN tag"
-  type        = number
-  default     = 20
-}
-
 variable "internal_vlan_tag" {
   description = "Internal network VLAN tag"
   type        = number
   default     = 30
 }
 
-variable "dmz_ip_prefix" {
-  description = "DMZ IP prefix (172.16.20)"
-  type        = string
-  default     = "172.16.20"
-}
-
 variable "internal_ip_prefix" {
   description = "Internal IP prefix (172.16.30)"
   type        = string
   default     = "172.16.30"
-}
-
-variable "dmz_gateway" {
-  description = "DMZ Gateway IP address"
-  type        = string
-  default     = "172.16.20.1"
 }
 
 variable "internal_gateway" {
@@ -158,7 +128,7 @@ variable "percona_vmid_start" {
 }
 
 variable "proxysql_ip_start" {
-  description = "Starting IP for ProxySQL nodes in DMZ"
+  description = "Starting IP for ProxySQL nodes in Internal network"
   type        = number
   default     = 25
 }

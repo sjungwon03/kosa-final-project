@@ -1,0 +1,124 @@
+---
+- name: Bootstrap Percona XtraDB Cluster
+  hosts: bootstrap
+  become: yes
+  vars:
+    mysql_data_dir: /var/lib/mysql
+    mysql_log_dir: /var/log/mysql
+    
+  tasks:
+    - name: Stop and kill all MySQL processes
+      shell: |
+        systemctl stop mysql || true
+        systemctl stop mysql@bootstrap || true
+        pkill -9 mysqld || true
+        pkill -9 mysql || true
+        pkill -9 mysqld_safe || true
+        
+    - name: Wait for processes to terminate
+      wait_for:
+        timeout: 5
+        
+    - name: Clean data directory completely
+      file:
+        path: "{{ mysql_data_dir }}"
+        state: absent
+        
+    - name: Create fresh data directory
+      file:
+        path: "{{ mysql_data_dir }}"
+        state: directory
+        owner: mysql
+        group: mysql
+        mode: '0755'
+        
+    - name: Create log directory
+      file:
+        path: "{{ mysql_log_dir }}"
+        state: directory
+        owner: mysql
+        group: mysql
+        mode: '0755'
+        
+    - name: Create run directory
+      file:
+        path: /var/run/mysqld
+        state: directory
+        owner: mysql
+        group: mysql
+        mode: '0755'
+        
+    - name: Bootstrap PXC cluster (no initialization needed)
+      shell: |
+        nohup /usr/sbin/mysqld \
+          --user=mysql \
+          --wsrep-new-cluster \
+          --datadir={{ mysql_data_dir }} \
+          --log-error={{ mysql_log_dir }}/bootstrap.log \
+          --pid-file=/var/run/mysqld/mysqld.pid \
+          --socket=/var/run/mysqld/mysqld.sock \
+          --port=3306 \
+          > /dev/null 2>&1 &
+        echo $!
+      register: bootstrap_pid
+      async: 10
+      poll: 0
+      
+    - name: Show bootstrap PID
+      debug:
+        var: bootstrap_pid
+        
+    - name: Wait for MySQL to be ready on port 3306
+      wait_for:
+        port: 3306
+        host: 127.0.0.1
+        timeout: 180
+        sleep: 5
+        
+    - name: Wait for Galera port 4567
+      wait_for:
+        port: 4567
+        host: 127.0.0.1
+        timeout: 60
+        
+    - name: Check bootstrap log for errors
+      shell: tail -30 {{ mysql_log_dir }}/bootstrap.log
+      register: bootstrap_log
+      failed_when: bootstrap_log.stdout is search('ERROR') and bootstrap_log.stdout is not search('ready for connections')
+      
+    - name: Show bootstrap log
+      debug:
+        var: bootstrap_log.stdout_lines
+        
+    - name: Verify cluster is running
+      shell: mysql -e "SHOW STATUS LIKE 'wsrep_cluster_size'"
+      register: cluster_status
+      
+    - name: Show cluster status
+      debug:
+        var: cluster_status.stdout_lines
+        
+    - name: Create SST user for cluster replication
+      mysql_user:
+        name: "{{ pxc_sst_user }}"
+        password: "{{ pxc_sst_password }}"
+        priv: "*.*:RELOAD,LOCK TABLES,PROCESS,REPLICATION SLAVE"
+        state: present
+        login_user: root
+        login_password: ''
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+      no_log: true
+      when: pxc_sst_user is defined
+      
+    - name: Set root password
+      mysql_user:
+        name: root
+        password: "{{ pxc_root_password }}"
+        priv: "*.*:ALL,GRANT"
+        host_all: yes
+        state: present
+        login_user: root
+        login_password: ''
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+      no_log: true
+      when: pxc_root_password is defined

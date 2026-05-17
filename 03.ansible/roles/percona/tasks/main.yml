@@ -12,7 +12,9 @@
     state: present
 
 - name: Enable Percona XtraDB Cluster repository
-  command: percona-release enable-only pxc-80 release --scheme https
+  shell: |
+    percona-release enable pxc-80 release
+    percona-release enable tools release
 
 - name: Update apt cache
   apt:
@@ -24,12 +26,28 @@
       - percona-xtradb-cluster
       - percona-xtradb-cluster-client
     state: present
+    update_cache: no
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  register: pxc_install_result
+  async: 600
+  poll: 10
+
+- name: Debug PXC install result
+  debug:
+    var: pxc_install_result
 
 - name: Install additional tools
   apt:
     name:
       - percona-toolkit
       - qpress
+    state: present
+
+- name: Install Python MySQL library
+  apt:
+    name:
+      - python3-pymysql
     state: present
 
 - name: Create MySQL data directory
@@ -48,6 +66,33 @@
     group: mysql
     mode: '0755'
 
+- name: Create MySQL run directory
+  file:
+    path: /var/run/mysqld
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0755'
+
+- name: Install apparmor-utils
+  apt:
+    name: apparmor-utils
+    state: present
+
+- name: Disable AppArmor for MySQL
+  shell: |
+    aa-disable usr.sbin.mysqld || true
+    if [ -f /etc/apparmor.d/usr.sbin.mysqld ]; then
+      ln -sf /etc/apparmor.d/usr.sbin.mysqld /etc/apparmor.d/disable/
+    fi
+    apparmor_parser -R /etc/apparmor.d/usr.sbin.mysqld 2>/dev/null || true
+  failed_when: false
+
+- name: Find wsrep provider library
+  shell: find /usr -name 'libgalera_smm.so' 2>/dev/null | head -1
+  register: wsrep_provider_path
+  changed_when: false
+
 - name: Configure my.cnf
   template:
     src: my.cnf.j2
@@ -65,15 +110,54 @@
 
 - name: Bootstrap first PXC node
   block:
-    - name: Bootstrap cluster
-      command: /etc/init.d/mysql bootstrap-pxc
-      args:
-        creates: "{{ mysql_data_dir }}/grastate.dat"
+    - name: Check if MySQL is running
+      shell: systemctl is-active mysql || true
+      register: mysql_status
+      changed_when: false
+
+    - name: Remove grastate.dat if MySQL not running
+      file:
+        path: "{{ mysql_data_dir }}/grastate.dat"
+        state: absent
+      when: "'inactive' in mysql_status.stdout or 'failed' in mysql_status.stdout"
+
+    - name: Verify wsrep provider exists
+      stat:
+        path: "{{ wsrep_provider_path.stdout }}"
+      register: wsrep_stat
+      when: wsrep_provider_path.stdout != ""
+      failed_when: 
+        - wsrep_provider_path.stdout != ""
+        - not wsrep_stat.stat.exists
+
+    - name: Check if MySQL data directory is initialized
+      stat:
+        path: "{{ mysql_data_dir }}/mysql"
+      register: mysql_data_check
+
+    - name: Initialize MySQL data directory
+      shell: /usr/sbin/mysqld --initialize-insecure --user=mysql --datadir={{ mysql_data_dir }} 2>&1
+      when: 
+        - "'inactive' in mysql_status.stdout or 'failed' in mysql_status.stdout"
+        - not mysql_data_check.stat.exists
+
+    - name: Bootstrap cluster using systemctl
+      shell: systemctl start mysql@bootstrap.service
+      when: "'inactive' in mysql_status.stdout or 'failed' in mysql_status.stdout"
+      register: bootstrap_result
+      failed_when: false
+
+    - name: Bootstrap cluster alternative method
+      shell: mysqld_safe --wsrep-new-cluster &
+      when: 
+        - "'inactive' in mysql_status.stdout or 'failed' in mysql_status.stdout"
+        - bootstrap_result.rc != 0
 
     - name: Wait for MySQL to start
       wait_for:
         port: "{{ pxc_port }}"
-        timeout: 60
+        host: "{{ ansible_host }}"
+        timeout: 120
 
     - name: Create SST user
       mysql_user:
@@ -81,6 +165,9 @@
         password: "{{ pxc_sst_password }}"
         priv: "*.*:RELOAD,LOCK TABLES,PROCESS,REPLICATION SLAVE"
         state: present
+        login_user: root
+        login_password: ''
+        login_unix_socket: /var/run/mysqld/mysqld.sock
       no_log: true
 
     - name: Create root user with full access
@@ -90,6 +177,9 @@
         priv: "*.*:ALL,GRANT"
         host_all: yes
         state: present
+        login_user: root
+        login_password: ''
+        login_unix_socket: /var/run/mysqld/mysqld.sock
       no_log: true
 
   when: pxc_bootstrap

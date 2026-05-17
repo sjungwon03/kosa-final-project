@@ -1,0 +1,1 @@
+{"cluster_name":"pxc","internal":{"gateway":"172.16.30.1","ip_prefix":"172.16.30","percona":{"first_ip":"172.16.30.100/24","ips":["172.16.30.100/24","172.16.30.101/24","172.16.30.102/24"],"names":["pxc-pxc-1","pxc-pxc-2","pxc-pxc-3"]},"proxysql":{"ips":["172.16.30.103/24","172.16.30.104/24"],"names":["pxc-proxysql-1","pxc-proxysql-2"],"vip":"172.16.30.105"},"vlan_tag":30}}

@@ -4,6 +4,6 @@ output "proxysql_admin_url" {
 }
 
 output "mysql_connection_string_proxysql" {
-  description = "MySQL connection string via ProxySQL (DMZ)"
-  value       = "mysql -h ${var.dmz_ip_prefix}.35 -P 6033 -u root -p"
+  description = "MySQL connection string via ProxySQL"
+  value       = "mysql -h ${var.internal_ip_prefix}.105 -P 6033 -u root -p"
 }

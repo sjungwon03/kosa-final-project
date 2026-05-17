@@ -24,8 +24,8 @@ output "proxysql_names" {
 }
 
 output "proxysql_vip" {
-  description = "Virtual IP for ProxySQL in DMZ"
-  value       = "${var.dmz_ip_prefix}.35"
+  description = "Virtual IP for ProxySQL"
+  value       = "${var.internal_ip_prefix}.105"
 }
 
 output "all_node_ips" {
