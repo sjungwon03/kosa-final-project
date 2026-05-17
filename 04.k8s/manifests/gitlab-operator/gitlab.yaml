@@ -10,6 +10,7 @@ spec:
     version: "8.8.1"
     values:
       global:
+        edition: ce
         hosts:
           domain: mgmt.local
         ingress:
