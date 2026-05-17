@@ -48,6 +48,13 @@ install_helm_chart() {
     echo "ERROR: Chart.yaml not found in ${chart_dir}"
     exit 1
   fi
+
+  # Gitea chart v12+ no longer supports actions/actRunner in the main chart.
+  if [[ "$name" == "gitea" ]] && grep -Eq '^[[:space:]]*(actions:|actRunner:)' "$values_file"; then
+    echo "ERROR: gitea values.yaml contains deprecated keys: actions/actRunner."
+    echo "       Remove them from ${values_file} and deploy actions with a dedicated chart."
+    exit 1
+  fi
   
   helm dependency update "$chart_dir" || true
   
