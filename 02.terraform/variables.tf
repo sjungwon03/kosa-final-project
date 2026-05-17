@@ -93,6 +93,12 @@ variable "percona_vmid_start" {
   default     = 101
 }
 
+variable "percona_ip_start" {
+  description = "Starting IP for Percona nodes in Internal network"
+  type        = number
+  default     = 10
+}
+
 variable "proxysql_nodes" {
   description = "Number of ProxySQL nodes"
   type        = number

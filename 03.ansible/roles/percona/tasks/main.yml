@@ -1,7 +1,9 @@
 ---
-- name: Add Percona apt key
-  apt_key:
-    url: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+- name: Install gnupg2 and lsb-release
+  apt:
+    name:
+      - gnupg2
+      - lsb-release
     state: present
 
 - name: Install Percona release package
@@ -10,7 +12,7 @@
     state: present
 
 - name: Enable Percona XtraDB Cluster repository
-  command: percona-release enable pxc-{{ pxc_version }} release
+  command: percona-release enable-only pxc-80 release --scheme https
 
 - name: Update apt cache
   apt:

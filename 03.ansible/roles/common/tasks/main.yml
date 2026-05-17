@@ -40,7 +40,7 @@
 - name: Configure hosts file
   lineinfile:
     path: /etc/hosts
-    regexp: "^{{ item.ip }}"
-    line: "{{ item.ip }} {{ item.name }}"
+    regexp: "^{{ item.value.ansible_host }}"
+    line: "{{ item.value.ansible_host }} {{ item.key }}"
   loop: "{{ hostvars | dict2items | selectattr('value.ansible_host', 'defined') | list }}"
   when: item.value.ansible_host is defined

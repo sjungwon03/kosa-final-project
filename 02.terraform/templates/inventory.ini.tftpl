@@ -1,22 +1,22 @@
 [all:vars]
 ansible_user=ubuntu
 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
-dmz_ip_prefix={{ dmz_ip_prefix }}
-internal_ip_prefix={{ internal_ip_prefix }}
-proxysql_vip={{ proxysql_vip }}
+dmz_ip_prefix=${dmz_ip_prefix}
+internal_ip_prefix=${internal_ip_prefix}
+proxysql_vip=${proxysql_vip}
 
 [percona]
-{% for i in range(percona_ips | length) %}
-{{ percona_names[i] }} ansible_host={{ percona_ips[i].split('/')[0] }} pxc_node_id={{ i + 1 }} network=internal
-{% endfor %}
+%{ for i, ip in percona_ips ~}
+${percona_names[i]} ansible_host=${split("/", ip)[0]} pxc_node_id=${i + 1} network=internal
+%{ endfor ~}
 
 [proxysql]
-{% for i in range(proxysql_ips | length) %}
-{{ proxysql_names[i] }} ansible_host={{ proxysql_ips[i].split('/')[0] }} network=dmz
-{% endfor %}
+%{ for i, ip in proxysql_ips ~}
+${proxysql_names[i]} ansible_host=${split("/", ip)[0]} network=dmz
+%{ endfor ~}
 
 [bootstrap]
-{{ percona_names[0] }} ansible_host={{ percona_ips[0].split('/')[0] }} network=internal
+${percona_names[0]} ansible_host=${split("/", percona_ips[0])[0]} network=internal
 
 [dmz:children]
 proxysql

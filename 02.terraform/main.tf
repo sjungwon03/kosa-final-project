@@ -36,6 +36,7 @@ module "percona_cluster" {
   percona_memory     = var.percona_memory
   percona_disk_size  = var.percona_disk_size
   percona_vmid_start = var.percona_vmid_start
+  percona_ip_start   = var.percona_ip_start
 
   proxysql_nodes      = var.proxysql_nodes
   proxysql_cpu        = var.proxysql_cpu
@@ -77,7 +78,7 @@ resource "local_file" "ansible_inventory" {
     dmz_ip_prefix      = var.dmz_ip_prefix
     internal_ip_prefix = var.internal_ip_prefix
   })
-  filename = "${path.module}/../ansible/inventory/hosts.ini"
+  filename = "${path.module}/../03.ansible/inventory/hosts.ini"
 }
 
 resource "local_file" "cluster_info" {

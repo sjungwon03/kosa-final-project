@@ -1,20 +1,12 @@
 ---
-- name: Add ProxySQL apt repository
-  apt_key:
-    url: https://repo.proxysql.com/ProxySQL/proxysql-2.5.x/repo_pub_key
-    state: present
-
-- name: Add ProxySQL repository
-  apt_repository:
-    repo: "deb https://repo.proxysql.com/ProxySQL/proxysql-2.5.x/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }} ./"
-    state: present
-    filename: proxysql
+- name: Download ProxySQL package
+  get_url:
+    url: "https://github.com/sysown/proxysql/releases/download/v3.0.8/proxysql_3.0.8-ubuntu22_amd64.deb"
+    dest: /tmp/proxysql.deb
 
 - name: Install ProxySQL
   apt:
-    name: proxysql
-    state: present
-    update_cache: yes
+    deb: /tmp/proxysql.deb
 
 - name: Configure ProxySQL
   template:
