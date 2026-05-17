@@ -2,13 +2,25 @@ gitea:
   namespace: gitea
 
   ingress:
-    enabled: false
+    enabled: true
+    pathType: Prefix
+    hosts:
+      - host: gitea.mgmt.local
+        paths:
+          - path: /
+    tls: []
 
   service:
     http:
-      type: NodePort
+      type: LoadBalancer
+      port: 3000
+      annotations:
+        metallb.universe.tf/allow-shared-ip: gitea-shared
     ssh:
-      type: NodePort
+      type: LoadBalancer
+      port: 22
+      annotations:
+        metallb.universe.tf/allow-shared-ip: gitea-shared
 
   persistence:
     enabled: true
