@@ -189,6 +189,14 @@ bash 03.ansible/03-deploy-to-control.sh
 └── ansible/     # 03.ansible/workspace/*
 ```
 
+### 변수 파일 위치 주의
+
+- `group_vars`는 반드시 **인벤토리 파일 옆** 또는 **playbook 디렉토리 옆**에 있어야 자동 로딩됩니다.
+- 현재 권장 경로:
+  - `~/workspace/ansible/inventories/prod/group_vars/all.yml`
+  - `~/workspace/ansible/inventories/test/group_vars/all.yml`
+- `~/workspace/ansible/group_vars/all.yml`만 둘 경우, 일부 실행 경로에서 변수(`ceph_storage_enabled`, `metallb_enabled`)가 로딩되지 않아 task가 `skipping` 될 수 있습니다.
+
 ---
 
 ## 인프라 구축 실행
