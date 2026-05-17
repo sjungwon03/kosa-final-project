@@ -12,6 +12,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu" {
   name      = each.key
   node_name = each.value.node
   vm_id     = each.value.vm_id
+  tags      = distinct(concat(var.vm_tags, try(each.value.tags, [])))
 
   clone {
     vm_id     = each.value.template_vm_id

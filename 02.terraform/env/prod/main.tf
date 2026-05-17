@@ -21,6 +21,7 @@ module "vms" {
   source         = "../../"
   template_node  = var.template_node
   vms            = var.vms
+  vm_tags        = var.vm_tags
   vm_nameserver  = var.vm_nameserver
   vm_password    = var.vm_password
   ssh_public_key = var.ssh_public_key

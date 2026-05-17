@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 컨트롤 노드 배포 스크립트
-# 기존 terraform/ansible 제거 후 ~/workspace/{terraform,ansible} 구조로 재배포
+# ~/workspace/{terraform,ansible} 구조로 증분 동기화 (terraform state 보존)
 #
 # [2026-05-13] 최초 작성
 #
@@ -23,17 +23,30 @@ SSH_OPTS="-o ControlMaster=auto -o ControlPath=${CONTROL_SOCKET} -o ControlPersi
 echo "[0/4] SSH 연결 초기화 (비밀번호 1회 입력)..."
 ssh $SSH_OPTS "$CONTROL_HOST" "echo connected"
 
-echo "[1/4] 컨트롤 노드 기존 디렉토리 제거 및 구조 생성..."
+echo "[1/4] 컨트롤 노드 디렉토리 구조 확인..."
 ssh $SSH_OPTS "$CONTROL_HOST" "
-  rm -rf ~/terraform ~/ansible ~/workspace
   mkdir -p ${REMOTE_WORKSPACE}/terraform ${REMOTE_WORKSPACE}/ansible
 "
 
-echo "[2/4] Terraform 파일 전송..."
-scp -o ControlPath="${CONTROL_SOCKET}" -r "${PROJECT_ROOT}/02.terraform/"* "${CONTROL_HOST}:${REMOTE_WORKSPACE}/terraform/"
+echo "[2/4] Terraform 파일 동기화 (state 보존)..."
+rsync -az --delete \
+  -e "ssh ${SSH_OPTS}" \
+  --exclude=".git/" \
+  --exclude=".terraform/" \
+  --exclude=".terraform.lock.hcl" \
+  --exclude="**/.terraform/" \
+  --exclude="**/.terraform.lock.hcl" \
+  --exclude="**/terraform.tfstate" \
+  --exclude="**/terraform.tfstate.*" \
+  --exclude="**/*.tfstate" \
+  --exclude="**/*.tfstate.*" \
+  "${PROJECT_ROOT}/02.terraform/" "${CONTROL_HOST}:${REMOTE_WORKSPACE}/terraform/"
 
-echo "[3/4] Ansible 파일 전송..."
-scp -o ControlPath="${CONTROL_SOCKET}" -r "${SCRIPT_DIR}/workspace/"* "${CONTROL_HOST}:${REMOTE_WORKSPACE}/ansible/"
+echo "[3/4] Ansible 파일 동기화..."
+rsync -az --delete \
+  -e "ssh ${SSH_OPTS}" \
+  --exclude=".git/" \
+  "${SCRIPT_DIR}/workspace/" "${CONTROL_HOST}:${REMOTE_WORKSPACE}/ansible/"
 
 echo "[4/4] 실행 권한 부여..."
 ssh $SSH_OPTS "$CONTROL_HOST" "chmod +x ${REMOTE_WORKSPACE}/terraform/02-run.sh"

@@ -35,8 +35,14 @@ variable "vms" {
     disk_size      = optional(number, 10)
     datastore_id   = optional(string, "rbd-storage")
     template_vm_id = optional(number, 9003)
+    tags           = optional(list(string), [])
   }))
   description = "배포할 VM 목록 — 반드시 -var-file로 주입 (tfvars/ 참고)"
+}
+
+variable "vm_tags" {
+  type    = list(string)
+  default = ["kosa", "managed-by-terraform", "env-test"]
 }
 
 variable "vm_nameserver" {

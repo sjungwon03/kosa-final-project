@@ -166,8 +166,8 @@ etcd --version
 - 로컬 `02.terraform` 및 `03.ansible/workspace` 내부 설정 완료
 
 ### 실행
-- 배포 시 컨트롤 노드의 `~/workspace/` 전체를 삭제 후 재생성함
-- `credentials.auto.tfvars` 등 컨트롤 노드에서 생성한 파일은 백업 필요
+- 배포 시 `~/workspace/`는 유지하고 증분 동기화함
+- Terraform state 파일(`terraform.tfstate*`)은 동기화에서 제외되어 보존됨
 
 ```bash
 # SSH 연결 시 비밀번호 1회 입력 필요
@@ -176,7 +176,7 @@ bash 03.ansible/03-deploy-to-control.sh
 
 ### 동작 순서
 
-1. 기존 컨트롤 노드의 디렉토리 초기화
+1. 컨트롤 노드 `~/workspace/` 디렉토리 확인
 2. `02.terraform/*` → 컨트롤 노드 `~/workspace/terraform/` 복사
 3. `03.ansible/workspace/*` → 컨트롤 노드 `~/workspace/ansible/` 복사
 4. 쉘 스크립트 실행 권한 부여
