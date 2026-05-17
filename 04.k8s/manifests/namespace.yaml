@@ -18,3 +18,11 @@ metadata:
   name: database
   labels:
     name: database
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gitlab-system
+  labels:
+    name: gitlab-system

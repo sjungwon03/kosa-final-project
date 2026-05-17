@@ -7,6 +7,7 @@ MANIFESTS_DIR="${SCRIPT_DIR}/../manifests"
 DEVOPS_NAMESPACE="devops"
 DATABASE_NAMESPACE="database"
 GITEA_NAMESPACE="gitea"
+GITLAB_OPERATOR_NAMESPACE="gitlab-system"
 TIMEOUT="${HELM_TIMEOUT:-900s}"
 WAIT_ARGS="--wait --timeout ${TIMEOUT}"
 
@@ -20,6 +21,7 @@ component:
   gitea       Upgrade gitea only
   percona-db  Upgrade percona-db only
   argocd   Upgrade argocd only
+  gitlab-operator Upgrade gitlab-operator only
 
 Examples:
   $0
@@ -27,6 +29,7 @@ Examples:
   $0 gitea
   $0 percona-db
   HELM_TIMEOUT=1200s $0 harbor
+  GL_OPERATOR_VERSION=2.9.0 $0 gitlab-operator
 USAGE
 }
 
@@ -96,7 +99,7 @@ upgrade_chart() {
 }
 
 show_status() {
-  for ns in "${DEVOPS_NAMESPACE}" "${DATABASE_NAMESPACE}" "${GITEA_NAMESPACE}"; do
+  for ns in "${DEVOPS_NAMESPACE}" "${DATABASE_NAMESPACE}" "${GITEA_NAMESPACE}" "${GITLAB_OPERATOR_NAMESPACE}"; do
     log "Helm releases (${ns})"
     helm -n "${ns}" ls || true
 
@@ -111,9 +114,26 @@ show_status() {
   done
 }
 
+upgrade_gitlab_operator() {
+  local operator_dir="${MANIFESTS_DIR}/gitlab-operator"
+  local gitlab_cr="${operator_dir}/gitlab.yaml"
+  local version="${GL_OPERATOR_VERSION:-2.9.0}"
+  local platform="${GL_OPERATOR_PLATFORM:-kubernetes}"
+  local manifest_url="https://gitlab.com/api/v4/projects/18899486/packages/generic/gitlab-operator/${version}/gitlab-operator-${platform}-${version}.yaml"
+
+  log "Applying GitLab Operator manifest (${version}/${platform})"
+  kubectl apply -f "${manifest_url}"
+
+  if [[ -f "${gitlab_cr}" ]]; then
+    log "Applying GitLab CR (${gitlab_cr})"
+    kubectl -n "${GITLAB_OPERATOR_NAMESPACE}" apply -f "${gitlab_cr}"
+  fi
+}
+
 ensure_namespace "${DEVOPS_NAMESPACE}"
 ensure_namespace "${DATABASE_NAMESPACE}"
 ensure_namespace "${GITEA_NAMESPACE}"
+ensure_namespace "${GITLAB_OPERATOR_NAMESPACE}"
 
 case "${COMPONENT}" in
   all)
@@ -121,6 +141,7 @@ case "${COMPONENT}" in
     upgrade_chart gitea "${MANIFESTS_DIR}/gitea" "${GITEA_NAMESPACE}"
     upgrade_chart percona-db "${MANIFESTS_DIR}/percona-db" "${DATABASE_NAMESPACE}"
     upgrade_chart argocd "${MANIFESTS_DIR}/argocd" "${DEVOPS_NAMESPACE}"
+    log "NOTE: gitlab-operator is optional. Run '$0 gitlab-operator' after setting GL_OPERATOR_VERSION/GL_OPERATOR_PLATFORM."
     ;;
   harbor)
     upgrade_chart harbor "${MANIFESTS_DIR}/harbor" "${DEVOPS_NAMESPACE}"
@@ -133,6 +154,9 @@ case "${COMPONENT}" in
     ;;
   argocd)
     upgrade_chart argocd "${MANIFESTS_DIR}/argocd" "${DEVOPS_NAMESPACE}"
+    ;;
+  gitlab-operator)
+    upgrade_gitlab_operator
     ;;
   *)
     echo "ERROR: unknown component: ${COMPONENT}" >&2

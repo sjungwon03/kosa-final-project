@@ -26,6 +26,7 @@ fi
 DEVOPS_NAMESPACE="devops"
 DATABASE_NAMESPACE="database"
 GITEA_NAMESPACE="gitea"
+GITLAB_OPERATOR_NAMESPACE="gitlab-system"
 
 create_namespace() {
   local namespace=$1
@@ -73,6 +74,36 @@ install_helm_chart() {
   fi
 }
 
+install_gitlab_operator() {
+  local operator_dir="${MANIFESTS_DIR}/gitlab-operator"
+  local gitlab_cr="${operator_dir}/gitlab.yaml"
+  local version="${GL_OPERATOR_VERSION:-2.9.0}"
+  local platform="${GL_OPERATOR_PLATFORM:-kubernetes}"
+  local manifest_url="https://gitlab.com/api/v4/projects/18899486/packages/generic/gitlab-operator/${version}/gitlab-operator-${platform}-${version}.yaml"
+
+  create_namespace "${GITLAB_OPERATOR_NAMESPACE}"
+  echo "[$(date '+%F %T')] Installing gitlab-operator (${version}/${platform})..."
+  kubectl apply -f "${manifest_url}"
+
+  if [ -f "${gitlab_cr}" ]; then
+    echo "[$(date '+%F %T')] Applying GitLab CR: ${gitlab_cr}"
+    kubectl -n "${GITLAB_OPERATOR_NAMESPACE}" apply -f "${gitlab_cr}"
+  fi
+}
+
+uninstall_gitlab_operator() {
+  local operator_dir="${MANIFESTS_DIR}/gitlab-operator"
+  local gitlab_cr="${operator_dir}/gitlab.yaml"
+  local version="${GL_OPERATOR_VERSION:-2.9.0}"
+  local platform="${GL_OPERATOR_PLATFORM:-kubernetes}"
+  local manifest_url="https://gitlab.com/api/v4/projects/18899486/packages/generic/gitlab-operator/${version}/gitlab-operator-${platform}-${version}.yaml"
+
+  if [ -f "${gitlab_cr}" ]; then
+    kubectl -n "${GITLAB_OPERATOR_NAMESPACE}" delete -f "${gitlab_cr}" --ignore-not-found=true
+  fi
+  kubectl delete -f "${manifest_url}" --ignore-not-found=true
+}
+
 create_namespace "$DEVOPS_NAMESPACE"
 create_namespace "$GITEA_NAMESPACE"
 
@@ -96,6 +127,13 @@ if [ -n "$COMPONENT" ]; then
     gitea)
       install_helm_chart gitea "${MANIFESTS_DIR}/gitea" "$GITEA_NAMESPACE"
       ;;
+    gitlab-operator)
+      if [[ "$ACTION" == "install" ]]; then
+        install_gitlab_operator
+      else
+        uninstall_gitlab_operator
+      fi
+      ;;
     argocd)
       install_helm_chart argocd "${MANIFESTS_DIR}/argocd" "$DEVOPS_NAMESPACE"
       ;;
@@ -111,6 +149,7 @@ else
   install_helm_chart gitea "${MANIFESTS_DIR}/gitea" "$GITEA_NAMESPACE"
   install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db" "$DATABASE_NAMESPACE"
   install_helm_chart argocd "${MANIFESTS_DIR}/argocd" "$DEVOPS_NAMESPACE"
+  echo "[$(date '+%F %T')] NOTE: gitlab-operator is optional. Run '$0 install gitlab-operator' after setting GL_OPERATOR_VERSION/GL_OPERATOR_PLATFORM."
 fi
 
 echo "[$(date '+%F %T')] done"

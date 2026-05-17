@@ -15,6 +15,7 @@ Helm chart 기반 DevOps 서비스 배포
 │   ├── gitea/               # Gitea + Actions Runner (Helm)
 │   ├── percona-db/          # Percona Operator + PXC (Helm)
 │   ├── argocd/              # ArgoCD GitOps (Helm)
+│   ├── gitlab-operator/     # GitLab Operator + GitLab CR (Manifest)
 │   ├── eks/                 # EKS 클라우드 버스팅용
 │   └── namespace.yaml
 └── scripts/
@@ -33,6 +34,7 @@ Helm chart 기반 DevOps 서비스 배포
 ./scripts/deploy-devops.sh install gitea
 ./scripts/deploy-devops.sh install percona-db
 ./scripts/deploy-devops.sh install argocd
+GL_OPERATOR_VERSION=2.9.0 ./scripts/deploy-devops.sh install gitlab-operator
 
 # 개별 서비스 삭제
 ./scripts/deploy-devops.sh uninstall percona-db
@@ -49,6 +51,7 @@ Helm chart 기반 DevOps 서비스 배포
 ./scripts/upgrade-devops.sh gitea
 ./scripts/upgrade-devops.sh percona-db
 ./scripts/upgrade-devops.sh argocd
+GL_OPERATOR_VERSION=2.9.0 ./scripts/upgrade-devops.sh gitlab-operator
 ```
 
 ## LoadBalancer IP 확인

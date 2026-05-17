@@ -1,0 +1,18 @@
+apiVersion: apps.gitlab.com/v1beta1
+kind: GitLab
+metadata:
+  name: gitlab
+  namespace: gitlab-system
+spec:
+  chart:
+    # Operator/Chart 호환 버전은 문서 참고:
+    # https://docs.gitlab.com/operator/installation/
+    version: "8.8.1"
+    values:
+      global:
+        hosts:
+          domain: mgmt.local
+        ingress:
+          configureCertmanager: false
+      certmanager-issuer:
+        email: admin@mgmt.local
