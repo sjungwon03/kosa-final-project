@@ -25,6 +25,10 @@ variable "vms" {
     ip             = string
     vlan           = number
     bridge         = string
+    storage_ip     = optional(string)
+    storage_bridge = optional(string, "vmbr1")
+    storage_cidr   = optional(number, 24)
+    storage_mtu    = optional(number, 9000)
     node           = string
     cores          = optional(number, 2)
     memory         = optional(number, 2048)

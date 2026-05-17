@@ -54,6 +54,34 @@
 
 ## VM 구성
 
+## 10G 스토리지 네트워크 (vmbr1)
+
+- 목적: Ceph 트래픽을 서비스망(172.16.x.x)과 분리
+- Proxmox 호스트 브리지: `vmbr1` (10.10.10.0/24, MTU 9000)
+- Terraform VM 옵션(선택):
+  - `storage_ip`
+  - `storage_bridge` (기본 `vmbr1`)
+  - `storage_cidr` (기본 `24`)
+  - `storage_mtu` (기본 `9000`)
+
+예시:
+```hcl
+"k8s-worker-01" = {
+  vm_id          = 2145
+  ip             = "172.16.30.45"
+  vlan           = 30
+  bridge         = "vmbr0"
+  storage_ip     = "10.10.10.211"
+  storage_bridge = "vmbr1"
+  storage_cidr   = 24
+  node           = "kosa21"
+}
+```
+
+현재 k8s 노드 할당 범위:
+- prod: `10.10.10.200~213`
+- test: `10.10.10.230~243`
+
 ### 스펙 기본값
 
 | 항목 | 기본값 | 비고 |

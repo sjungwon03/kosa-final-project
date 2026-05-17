@@ -234,6 +234,51 @@ ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook -i ~/workspace/a
 rm -rf ~/.ansible/cp/*
 ```
 
+### Ceph StorageClass 자동 적용 (k8s.yml)
+
+`playbooks/k8s.yml` 마지막 단계에서 아래 순서로 자동 적용합니다.
+1. Ceph CSI(RBD) Helm 차트 설치/업그레이드
+2. Ceph CSI Secret 생성
+3. `rbd-storage` StorageClass 생성
+
+설정 파일:
+- `workspace/group_vars/all.yml`
+  - `ceph_csi_enabled`
+  - `ceph_csi_chart_version`
+  - `ceph_csi_monitors`
+  - `ceph_rbd_cluster_id`
+  - `ceph_csi_user_id`
+  - `ceph_csi_user_key`
+  - `ceph_storage_enabled` (기본 `true`)
+
+현재 team4 기준 값:
+```yaml
+ceph_rbd_cluster_id: "861f6095-c334-413a-95a0-04e197f430c2"
+ceph_rbd_pool: "rbd-team4"
+ceph_csi_user_id: "team4-k8s-csi"   # ceph auth id는 client. 접두어 제외
+ceph_csi_user_key: "AQCdgwlqMDIwKRAAO1t079BPaR/p+l7Xb9SuYw=="
+ceph_csi_monitors:
+  - "10.10.10.11:6789"
+  - "10.10.10.12:6789"
+  - "10.10.10.13:6789"
+  - "10.10.10.14:6789"
+  - "10.10.10.15:6789"
+  - "10.10.10.16:6789"
+```
+
+실행:
+```bash
+ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg \
+ansible-playbook -i ~/workspace/ansible/inventories/prod/hosts \
+~/workspace/ansible/playbooks/k8s.yml
+```
+
+검증:
+```bash
+kubectl get sc rbd-storage
+kubectl -n kube-system get secret ceph-csi-rbd-secret
+```
+
 ---
 
 
@@ -297,4 +342,3 @@ rm -rf ~/.ansible/cp/*
 | kosa21 | 21210 | test-dns-01 | 172.16.30.210 | test-dns-01.svc.local | test DNS 서버 | rbd-storage |
 | kosa23 | 23211 | test-dns-02 | 172.16.30.211 | test-dns-02.svc.local | test DNS 서버 | rbd-storage |
 | kosa24 | 24215 | test-vault-01 | 172.16.30.215 | test-vault-01.sec.local | test 보안 서버 | rbd-storage |
-

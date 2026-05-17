@@ -14,3 +14,135 @@
   hosts: k8s_workers
   roles:
     - k8s_worker
+
+- name: Ceph RBD StorageClass 적용
+  hosts: k8s_masters
+  become: false
+  gather_facts: false
+  vars:
+    ceph_storage_enabled_safe: "{{ ceph_storage_enabled | default(false) | bool }}"
+    ceph_csi_enabled_safe: "{{ ceph_csi_enabled | default(false) | bool }}"
+    ceph_helm_bin_safe: "{{ ceph_helm_bin | default('/usr/local/bin/helm') }}"
+    ceph_csi_release_name_safe: "{{ ceph_csi_release_name | default('ceph-csi-rbd') }}"
+    ceph_csi_namespace_safe: "{{ ceph_csi_namespace | default('kube-system') }}"
+    ceph_csi_chart_version_safe: "{{ ceph_csi_chart_version | default('3.13.0') }}"
+    ceph_rbd_cluster_id_safe: "{{ ceph_rbd_cluster_id | default('') }}"
+    ceph_rbd_pool_safe: "{{ ceph_rbd_pool | default('rbd-team4') }}"
+    ceph_csi_secret_namespace_safe: "{{ ceph_csi_secret_namespace | default('kube-system') }}"
+    ceph_csi_secret_name_safe: "{{ ceph_csi_secret_name | default('ceph-csi-rbd-secret') }}"
+    ceph_csi_user_id_safe: "{{ ceph_csi_user_id | default('') }}"
+    ceph_csi_user_key_safe: "{{ ceph_csi_user_key | default('') }}"
+    ceph_rbd_storageclass_name_safe: "{{ ceph_rbd_storageclass_name | default('rbd-storage') }}"
+    ceph_csi_monitors_safe: "{{ ceph_csi_monitors | default([]) }}"
+  tasks:
+    - name: Helm 바이너리 존재 확인
+      ansible.builtin.stat:
+        path: "{{ ceph_helm_bin_safe }}"
+      register: ceph_helm_stat
+      run_once: true
+      when: ceph_storage_enabled_safe and ceph_csi_enabled_safe
+
+    - name: Helm 설치 스크립트 다운로드
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        dest: /tmp/get-helm-3.sh
+        mode: "0755"
+      run_once: true
+      when:
+        - ceph_storage_enabled_safe
+        - ceph_csi_enabled_safe
+        - not ceph_helm_stat.stat.exists
+
+    - name: Helm 설치 실행
+      ansible.builtin.command: /tmp/get-helm-3.sh
+      become: true
+      run_once: true
+      when:
+        - ceph_storage_enabled_safe
+        - ceph_csi_enabled_safe
+        - not ceph_helm_stat.stat.exists
+
+    - name: Ceph CSI Helm values manifest 생성
+      ansible.builtin.copy:
+        dest: /tmp/ceph-csi-rbd-values.yaml
+        mode: "0644"
+        content: |
+          csiConfig:
+            - clusterID: {{ ceph_rbd_cluster_id_safe }}
+              monitors: {{ ceph_csi_monitors_safe }}
+      run_once: true
+      when: ceph_storage_enabled_safe and ceph_csi_enabled_safe
+
+    - name: Ceph CSI Helm repo 추가
+      ansible.builtin.command: "{{ ceph_helm_bin_safe }} repo add ceph-csi https://ceph.github.io/csi-charts"
+      run_once: true
+      changed_when: false
+      failed_when: false
+      when: ceph_storage_enabled_safe and ceph_csi_enabled_safe
+
+    - name: Ceph CSI Helm repo 업데이트
+      ansible.builtin.command: "{{ ceph_helm_bin_safe }} repo update"
+      run_once: true
+      when: ceph_storage_enabled_safe and ceph_csi_enabled_safe
+
+    - name: Ceph CSI RBD 설치/업그레이드
+      ansible.builtin.command: >
+        {{ ceph_helm_bin_safe }} upgrade --install {{ ceph_csi_release_name_safe }} ceph-csi/ceph-csi-rbd
+        -n {{ ceph_csi_namespace_safe }}
+        --version {{ ceph_csi_chart_version_safe }}
+        -f /tmp/ceph-csi-rbd-values.yaml
+      run_once: true
+      when: ceph_storage_enabled_safe and ceph_csi_enabled_safe
+
+    - name: Ceph CSI Secret manifest 생성
+      ansible.builtin.copy:
+        dest: /tmp/ceph-csi-rbd-secret.yaml
+        mode: "0600"
+        content: |
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: {{ ceph_csi_secret_name_safe }}
+            namespace: {{ ceph_csi_secret_namespace_safe }}
+          type: kubernetes.io/opaque
+          stringData:
+            userID: "{{ ceph_csi_user_id_safe }}"
+            userKey: "{{ ceph_csi_user_key_safe }}"
+      run_once: true
+      when: ceph_storage_enabled_safe
+
+    - name: Ceph RBD StorageClass manifest 생성
+      ansible.builtin.copy:
+        dest: /tmp/ceph-rbd-storageclass.yaml
+        mode: "0644"
+        content: |
+          apiVersion: storage.k8s.io/v1
+          kind: StorageClass
+          metadata:
+            name: {{ ceph_rbd_storageclass_name_safe }}
+          provisioner: rbd.csi.ceph.com
+          allowVolumeExpansion: true
+          reclaimPolicy: Delete
+          volumeBindingMode: WaitForFirstConsumer
+          parameters:
+            clusterID: {{ ceph_rbd_cluster_id_safe }}
+            pool: {{ ceph_rbd_pool_safe }}
+            imageFeatures: layering
+            csi.storage.k8s.io/provisioner-secret-name: {{ ceph_csi_secret_name_safe }}
+            csi.storage.k8s.io/provisioner-secret-namespace: {{ ceph_csi_secret_namespace_safe }}
+            csi.storage.k8s.io/controller-expand-secret-name: {{ ceph_csi_secret_name_safe }}
+            csi.storage.k8s.io/controller-expand-secret-namespace: {{ ceph_csi_secret_namespace_safe }}
+            csi.storage.k8s.io/node-stage-secret-name: {{ ceph_csi_secret_name_safe }}
+            csi.storage.k8s.io/node-stage-secret-namespace: {{ ceph_csi_secret_namespace_safe }}
+      run_once: true
+      when: ceph_storage_enabled_safe
+
+    - name: Ceph CSI Secret 적용
+      ansible.builtin.command: kubectl apply -f /tmp/ceph-csi-rbd-secret.yaml
+      run_once: true
+      when: ceph_storage_enabled_safe
+
+    - name: Ceph RBD StorageClass 적용
+      ansible.builtin.command: kubectl apply -f /tmp/ceph-rbd-storageclass.yaml
+      run_once: true
+      when: ceph_storage_enabled_safe

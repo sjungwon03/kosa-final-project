@@ -37,6 +37,16 @@ resource "proxmox_virtual_environment_vm" "ubuntu" {
     firewall = false
   }
 
+  dynamic "network_device" {
+    for_each = try(each.value.storage_ip, null) != null ? [1] : []
+    content {
+      bridge   = each.value.storage_bridge
+      model    = "virtio"
+      firewall = false
+      mtu      = each.value.storage_mtu
+    }
+  }
+
   disk {
     datastore_id = each.value.datastore_id
     interface    = "scsi0"
@@ -54,6 +64,14 @@ resource "proxmox_virtual_environment_vm" "ubuntu" {
       ipv4 {
         address = "${each.value.ip}/24"
         gateway = "172.16.${each.value.vlan}.1"
+      }
+    }
+    dynamic "ip_config" {
+      for_each = try(each.value.storage_ip, null) != null ? [1] : []
+      content {
+        ipv4 {
+          address = "${each.value.storage_ip}/${each.value.storage_cidr}"
+        }
       }
     }
     user_account {
