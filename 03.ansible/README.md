@@ -258,6 +258,29 @@ ceph_rbd_pool: "rbd-team4"
 ceph_csi_user_id: "team4-k8s-csi"   # ceph auth id는 client. 접두어 제외
 ceph_csi_user_key: "AQCdgwlqMDIwKRAAO1t079BPaR/p+l7Xb9SuYw=="
 ceph_csi_monitors:
+
+### MetalLB 자동 설치 및 주소풀 적용 (k8s.yml)
+
+`playbooks/k8s.yml` 마지막 단계에서 아래 순서로 자동 적용합니다.
+1. MetalLB 네이티브 매니페스트 설치
+2. `controller`, `speaker` rollout 대기
+3. `IPAddressPool`, `L2Advertisement` 생성/적용
+
+설정 파일:
+- `workspace/group_vars/all.yml`
+  - `metallb_enabled`
+  - `metallb_manifest_url`
+  - `metallb_namespace`
+  - `metallb_ipaddresspool_name`
+  - `metallb_l2advertisement_name`
+  - `metallb_address_pools`
+
+기본값:
+```yaml
+metallb_enabled: true
+metallb_address_pools:
+  - "172.16.30.200-172.16.30.249"
+```
   - "10.10.10.11:6789"
   - "10.10.10.12:6789"
   - "10.10.10.13:6789"

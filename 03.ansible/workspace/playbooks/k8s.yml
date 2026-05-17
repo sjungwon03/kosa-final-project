@@ -146,3 +146,83 @@
       ansible.builtin.command: kubectl apply -f /tmp/ceph-rbd-storageclass.yaml
       run_once: true
       when: ceph_storage_enabled_safe
+
+- name: MetalLB 설치 및 IPAddressPool 적용
+  hosts: k8s_masters
+  become: false
+  gather_facts: false
+  vars:
+    metallb_enabled_safe: "{{ metallb_enabled | default(false) | bool }}"
+    metallb_namespace_safe: "{{ metallb_namespace | default('metallb-system') }}"
+    metallb_manifest_url_safe: "{{ metallb_manifest_url | default('https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml') }}"
+    metallb_ipaddresspool_name_safe: "{{ metallb_ipaddresspool_name | default('primary-pool') }}"
+    metallb_l2advertisement_name_safe: "{{ metallb_l2advertisement_name | default('primary-l2adv') }}"
+    metallb_address_pools_safe: "{{ metallb_address_pools | default([]) }}"
+    metallb_auto_assign_safe: "{{ metallb_auto_assign | default(true) | bool }}"
+    metallb_avoid_buggy_ips_safe: "{{ metallb_avoid_buggy_ips | default(true) | bool }}"
+  tasks:
+    - name: MetalLB 주소 풀 설정 검증
+      ansible.builtin.assert:
+        that:
+          - metallb_address_pools_safe | length > 0
+        fail_msg: "metallb_address_pools 값을 1개 이상 설정해 주세요."
+      run_once: true
+      when: metallb_enabled_safe
+
+    - name: MetalLB 네이티브 매니페스트 적용
+      ansible.builtin.command: "kubectl apply -f {{ metallb_manifest_url_safe }}"
+      run_once: true
+      when: metallb_enabled_safe
+
+    - name: MetalLB controller rollout 대기
+      ansible.builtin.command: "kubectl -n {{ metallb_namespace_safe }} rollout status deploy/controller --timeout=300s"
+      run_once: true
+      when: metallb_enabled_safe
+
+    - name: MetalLB speaker rollout 대기
+      ansible.builtin.command: "kubectl -n {{ metallb_namespace_safe }} rollout status ds/speaker --timeout=300s"
+      run_once: true
+      when: metallb_enabled_safe
+
+    - name: MetalLB IPAddressPool manifest 생성
+      ansible.builtin.copy:
+        dest: /tmp/metallb-ipaddresspool.yaml
+        mode: "0644"
+        content: |
+          apiVersion: metallb.io/v1beta1
+          kind: IPAddressPool
+          metadata:
+            name: {{ metallb_ipaddresspool_name_safe }}
+            namespace: {{ metallb_namespace_safe }}
+          spec:
+            addresses: {{ metallb_address_pools_safe | to_json }}
+            autoAssign: {{ metallb_auto_assign_safe | lower }}
+            avoidBuggyIPs: {{ metallb_avoid_buggy_ips_safe | lower }}
+      run_once: true
+      when: metallb_enabled_safe
+
+    - name: MetalLB L2Advertisement manifest 생성
+      ansible.builtin.copy:
+        dest: /tmp/metallb-l2advertisement.yaml
+        mode: "0644"
+        content: |
+          apiVersion: metallb.io/v1beta1
+          kind: L2Advertisement
+          metadata:
+            name: {{ metallb_l2advertisement_name_safe }}
+            namespace: {{ metallb_namespace_safe }}
+          spec:
+            ipAddressPools:
+              - {{ metallb_ipaddresspool_name_safe }}
+      run_once: true
+      when: metallb_enabled_safe
+
+    - name: MetalLB IPAddressPool 적용
+      ansible.builtin.command: kubectl apply -f /tmp/metallb-ipaddresspool.yaml
+      run_once: true
+      when: metallb_enabled_safe
+
+    - name: MetalLB L2Advertisement 적용
+      ansible.builtin.command: kubectl apply -f /tmp/metallb-l2advertisement.yaml
+      run_once: true
+      when: metallb_enabled_safe
