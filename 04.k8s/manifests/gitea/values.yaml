@@ -1,8 +1,5 @@
 gitea:
-  admin:
-    username: gitea_admin
-    password: "kosa1004"
-    email: admin@mgmt.local
+  namespace: gitea
 
   ingress:
     enabled: false
@@ -24,6 +21,12 @@ gitea:
 
   nodeSelector:
     kubernetes.io/hostname: k8s-worker-plat
+
+  gitea:
+    admin:
+      username: gitea_admin
+      password: "kosa1004"
+      email: admin@mgmt.local
 
   postgresql:
     enabled: true
@@ -59,10 +62,7 @@ gitea:
         storageClass: rbd-storage
 
   valkey-cluster:
-    # Gitea chart v12 계열은 기본적으로 valkey-cluster 서브차트를 사용합니다.
-    # 단일 인스턴스 구성을 위해 valkey-cluster는 비활성화하고 valkey를 사용합니다.
     enabled: false
-    # Bitnami public 이미지 축소 이슈로 인해 legacy 레포로 고정합니다.
     image:
       repository: bitnamilegacy/valkey-cluster
       tag: 8.1.3-debian-12-r3
