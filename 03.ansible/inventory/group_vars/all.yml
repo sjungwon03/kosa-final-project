@@ -20,9 +20,3 @@ proxysql_mysql_servers=[
 proxysql_mysql_users=[
   {username: 'admin', password: 'admin', default_hostgroup: 0}
 ]
-
-haproxy_backend_servers=[
-  {name: 'pxc-1', address: '172.16.30.10', port: 3306},
-  {name: 'pxc-2', address: '172.16.30.11', port: 3306},
-  {name: 'pxc-3', address: '172.16.30.12', port: 3306}
-]

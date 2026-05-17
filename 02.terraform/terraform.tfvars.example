@@ -17,12 +17,6 @@ percona_memory     = 4096
 percona_disk_size  = 60
 percona_vmid_start = 4001
 
-haproxy_nodes      = 2
-haproxy_cpu        = 2
-haproxy_memory     = 2048
-haproxy_disk_size  = 20
-haproxy_vmid_start = 4011
-
 proxysql_nodes      = 2
 proxysql_cpu        = 2
 proxysql_memory     = 4096

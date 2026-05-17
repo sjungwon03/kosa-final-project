@@ -25,23 +25,6 @@
           - "Cluster Status: {{ cluster_status.stdout }}"
           - "Local State: {{ local_state.stdout }}"
 
-- name: Verify HAProxy status
-  hosts: haproxy
-  become: yes
-  tasks:
-    - name: Check HAProxy status
-      uri:
-        url: "http://localhost:{{ haproxy_stats_port }}/stats"
-        user: "{{ haproxy_stats_user }}"
-        password: "{{ haproxy_stats_password }}"
-        return_content: yes
-      register: haproxy_status
-      changed_when: false
-
-    - name: Display HAProxy info
-      debug:
-        msg: "HAProxy stats available at http://{{ ansible_host }}:{{ haproxy_stats_port }}/stats"
-
 - name: Verify ProxySQL status
   hosts: proxysql
   become: yes

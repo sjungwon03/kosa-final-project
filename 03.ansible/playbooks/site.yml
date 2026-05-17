@@ -8,12 +8,6 @@
   roles:
     - common
 
-- name: Setup HAProxy load balancers
-  hosts: haproxy
-  become: yes
-  roles:
-    - haproxy
-
 - name: Setup ProxySQL
   hosts: proxysql
   become: yes

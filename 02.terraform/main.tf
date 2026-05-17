@@ -37,12 +37,6 @@ module "percona_cluster" {
   percona_disk_size  = var.percona_disk_size
   percona_vmid_start = var.percona_vmid_start
 
-  haproxy_nodes      = var.haproxy_nodes
-  haproxy_cpu        = var.haproxy_cpu
-  haproxy_memory     = var.haproxy_memory
-  haproxy_disk_size  = var.haproxy_disk_size
-  haproxy_vmid_start = var.haproxy_vmid_start
-
   proxysql_nodes      = var.proxysql_nodes
   proxysql_cpu        = var.proxysql_cpu
   proxysql_memory     = var.proxysql_memory
@@ -77,11 +71,8 @@ resource "local_file" "ansible_inventory" {
   content = templatefile("${path.module}/templates/inventory.ini.tftpl", {
     percona_ips        = module.percona_cluster.percona_ips
     percona_names      = module.percona_cluster.percona_names
-    haproxy_ips        = module.percona_cluster.haproxy_ips
-    haproxy_names      = module.percona_cluster.haproxy_names
     proxysql_ips       = module.percona_cluster.proxysql_ips
     proxysql_names     = module.percona_cluster.proxysql_names
-    haproxy_vip        = "${var.dmz_ip_prefix}.30"
     proxysql_vip       = "${var.dmz_ip_prefix}.35"
     dmz_ip_prefix      = var.dmz_ip_prefix
     internal_ip_prefix = var.internal_ip_prefix
@@ -96,11 +87,6 @@ resource "local_file" "cluster_info" {
       vlan_tag  = var.dmz_vlan_tag
       ip_prefix = var.dmz_ip_prefix
       gateway   = var.dmz_gateway
-      haproxy = {
-        ips   = module.percona_cluster.haproxy_ips
-        names = module.percona_cluster.haproxy_names
-        vip   = "${var.dmz_ip_prefix}.30"
-      }
       proxysql = {
         ips   = module.percona_cluster.proxysql_ips
         names = module.percona_cluster.proxysql_names

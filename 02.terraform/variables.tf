@@ -93,36 +93,6 @@ variable "percona_vmid_start" {
   default     = 101
 }
 
-variable "haproxy_nodes" {
-  description = "Number of HAProxy nodes"
-  type        = number
-  default     = 2
-}
-
-variable "haproxy_cpu" {
-  description = "CPU cores for HAProxy nodes"
-  type        = number
-  default     = 2
-}
-
-variable "haproxy_memory" {
-  description = "Memory MB for HAProxy nodes"
-  type        = number
-  default     = 2048
-}
-
-variable "haproxy_disk_size" {
-  description = "Disk size GB for HAProxy nodes"
-  type        = number
-  default     = 20
-}
-
-variable "haproxy_vmid_start" {
-  description = "Starting VM ID for HAProxy nodes"
-  type        = number
-  default     = 111
-}
-
 variable "proxysql_nodes" {
   description = "Number of ProxySQL nodes"
   type        = number
