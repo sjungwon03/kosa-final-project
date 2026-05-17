@@ -15,6 +15,7 @@ pxc-db:
 
   pxc:
     size: 3
+    autoRecovery: true
     persistence:
       enabled: true
       storageClass: rbd-storage
