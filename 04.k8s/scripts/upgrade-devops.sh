@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MANIFESTS_DIR="${SCRIPT_DIR}/../manifests"
 DEVOPS_NAMESPACE="devops"
 DATABASE_NAMESPACE="database"
+GITEA_NAMESPACE="gitea"
 TIMEOUT="${HELM_TIMEOUT:-900s}"
 WAIT_ARGS="--wait --timeout ${TIMEOUT}"
 
@@ -95,7 +96,7 @@ upgrade_chart() {
 }
 
 show_status() {
-  for ns in "${DEVOPS_NAMESPACE}" "${DATABASE_NAMESPACE}"; do
+  for ns in "${DEVOPS_NAMESPACE}" "${DATABASE_NAMESPACE}" "${GITEA_NAMESPACE}"; do
     log "Helm releases (${ns})"
     helm -n "${ns}" ls || true
 
@@ -112,11 +113,12 @@ show_status() {
 
 ensure_namespace "${DEVOPS_NAMESPACE}"
 ensure_namespace "${DATABASE_NAMESPACE}"
+ensure_namespace "${GITEA_NAMESPACE}"
 
 case "${COMPONENT}" in
   all)
     upgrade_chart harbor "${MANIFESTS_DIR}/harbor" "${DEVOPS_NAMESPACE}"
-    upgrade_chart gitea "${MANIFESTS_DIR}/gitea" "${DEVOPS_NAMESPACE}"
+    upgrade_chart gitea "${MANIFESTS_DIR}/gitea" "${GITEA_NAMESPACE}"
     upgrade_chart percona-db "${MANIFESTS_DIR}/percona-db" "${DATABASE_NAMESPACE}"
     upgrade_chart argocd "${MANIFESTS_DIR}/argocd" "${DEVOPS_NAMESPACE}"
     ;;
@@ -124,7 +126,7 @@ case "${COMPONENT}" in
     upgrade_chart harbor "${MANIFESTS_DIR}/harbor" "${DEVOPS_NAMESPACE}"
     ;;
   gitea)
-    upgrade_chart gitea "${MANIFESTS_DIR}/gitea" "${DEVOPS_NAMESPACE}"
+    upgrade_chart gitea "${MANIFESTS_DIR}/gitea" "${GITEA_NAMESPACE}"
     ;;
   percona-db)
     upgrade_chart percona-db "${MANIFESTS_DIR}/percona-db" "${DATABASE_NAMESPACE}"

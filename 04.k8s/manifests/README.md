@@ -13,7 +13,8 @@ MetalLB IP Pool (172.16.30.200-172.16.30.210)에서 서비스 LoadBalancer IP를
 1. 서비스별 LoadBalancer IP 확인:
 
 ```bash
-kubectl get svc -n devops
+kubectl get svc -n devops   # harbor, argocd
+kubectl get svc -n gitea    # gitea
 ```
 
 2. DNS 서버에 A 레코드 추가:
@@ -32,5 +33,5 @@ argocd.mgmt.local    IN A    <ARGOCD_LB_IP>
 
 ## Percona DB 접속 정보
 
-- 내부 접속: `percona-db-pxc-db-haproxy.devops.svc.cluster.local:3306`
-- 외부 접속: `kubectl get svc -n devops | grep percona-db`
+- 내부 접속: `percona-db-pxc-db-haproxy.database.svc.cluster.local:3306`
+- 외부 접속: `kubectl get svc -n database | grep percona-db`

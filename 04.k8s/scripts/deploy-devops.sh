@@ -25,6 +25,7 @@ fi
 
 DEVOPS_NAMESPACE="devops"
 DATABASE_NAMESPACE="database"
+GITEA_NAMESPACE="gitea"
 
 create_namespace() {
   local namespace=$1
@@ -73,6 +74,7 @@ install_helm_chart() {
 }
 
 create_namespace "$DEVOPS_NAMESPACE"
+create_namespace "$GITEA_NAMESPACE"
 
 if [ -n "$COMPONENT" ]; then
   case $COMPONENT in
@@ -92,7 +94,7 @@ if [ -n "$COMPONENT" ]; then
       install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db" "$DATABASE_NAMESPACE"
       ;;
     gitea)
-      install_helm_chart gitea "${MANIFESTS_DIR}/gitea" "$DEVOPS_NAMESPACE"
+      install_helm_chart gitea "${MANIFESTS_DIR}/gitea" "$GITEA_NAMESPACE"
       ;;
     argocd)
       install_helm_chart argocd "${MANIFESTS_DIR}/argocd" "$DEVOPS_NAMESPACE"
@@ -104,8 +106,9 @@ if [ -n "$COMPONENT" ]; then
   esac
 else
   create_namespace "$DATABASE_NAMESPACE"
+  create_namespace "$GITEA_NAMESPACE"
   install_helm_chart harbor "${MANIFESTS_DIR}/harbor" "$DEVOPS_NAMESPACE"
-  install_helm_chart gitea "${MANIFESTS_DIR}/gitea" "$DEVOPS_NAMESPACE"
+  install_helm_chart gitea "${MANIFESTS_DIR}/gitea" "$GITEA_NAMESPACE"
   install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db" "$DATABASE_NAMESPACE"
   install_helm_chart argocd "${MANIFESTS_DIR}/argocd" "$DEVOPS_NAMESPACE"
 fi

@@ -55,7 +55,9 @@ Helm chart 기반 DevOps 서비스 배포
 
 ```bash
 kubectl get svc -n devops
-kubectl get svc -n devops | grep -E 'harbor|gitea|percona|argo'
+kubectl get svc -n devops | grep -E 'harbor|argo'
+kubectl get svc -n gitea | grep gitea
+kubectl get svc -n database | grep percona
 ```
 
 ## Percona DB 진입점
