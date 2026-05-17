@@ -1,9 +1,0 @@
-proxysql_version: "2.5"
-proxysql_admin_port: 6032
-proxysql_mysql_port: 6033
-proxysql_admin_user: admin
-proxysql_admin_password: admin
-
-mysql_servers: []
-mysql_users: []
-mysql_query_rules: []
