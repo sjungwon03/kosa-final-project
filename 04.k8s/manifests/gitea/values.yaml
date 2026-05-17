@@ -24,23 +24,6 @@ gitea:
   nodeSelector:
     kubernetes.io/hostname: k8s-worker-plat
 
-  postgresql:
-    enabled: true
-    primary:
-      persistence:
-        enabled: true
-        storageClass: rbd-storage
-
-  redis-cluster:
-    enabled: false
-
-  redis:
-    enabled: true
-    master:
-      persistence:
-        enabled: true
-        storageClass: rbd-storage
-
   actRunner:
     enabled: true
     replicas: 1
@@ -51,3 +34,22 @@ gitea:
       labels:
         - "k8s:docker://node:20-bookworm"
 
+postgresql:
+  enabled: true
+  primary:
+    persistence:
+      enabled: true
+      storageClass: rbd-storage
+
+postgresql-ha:
+  enabled: false
+
+redis-cluster:
+  enabled: false
+
+redis:
+  enabled: true
+  master:
+    persistence:
+      enabled: true
+      storageClass: rbd-storage
