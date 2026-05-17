@@ -25,6 +25,8 @@ gitlab:
         memory: 1200Mi
     service:
       type: LoadBalancer
+      annotations:
+        metallb.universe.tf/allow-shared-ip: gitlab-shared
   sidekiq:
     replicaCount: 1
     minReplicas: 1
@@ -37,6 +39,8 @@ gitlab:
     replicaCount: 1
     service:
       type: LoadBalancer
+      annotations:
+        metallb.universe.tf/allow-shared-ip: gitlab-shared
   kas:
     enabled: false
   initialRootPassword:
