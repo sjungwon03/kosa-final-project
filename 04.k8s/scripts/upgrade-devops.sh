@@ -83,11 +83,13 @@ upgrade_chart() {
       --namespace "${namespace}" \
       --create-namespace \
       -f "${values_file}" \
+      --reset-values \
       ${WAIT_ARGS}
   else
     helm upgrade --install "${release}" "${chart_dir}" \
       --namespace "${namespace}" \
       --create-namespace \
+      --reset-values \
       ${WAIT_ARGS}
   fi
 }

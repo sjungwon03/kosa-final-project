@@ -62,10 +62,12 @@ install_helm_chart() {
     helm $ACTION $name "$chart_dir" \
       --namespace "$namespace" \
       -f "$values_file" \
+      --reset-values \
       --timeout 600s
   else
     helm $ACTION $name "$chart_dir" \
       --namespace "$namespace" \
+      --reset-values \
       --timeout 600s
   fi
 }
