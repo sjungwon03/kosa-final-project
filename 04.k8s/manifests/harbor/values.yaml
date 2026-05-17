@@ -12,15 +12,15 @@ persistence:
   enabled: true
   persistentVolumeClaim:
     registry:
-      storageClass: "local-path"
+      storageClass: "rbd-storage"
     database:
-      storageClass: "local-path"
+      storageClass: "rbd-storage"
     redis:
-      storageClass: "local-path"
+      storageClass: "rbd-storage"
     trivy:
-      storageClass: "local-path"
+      storageClass: "rbd-storage"
     chartmuseum:
-      storageClass: "local-path"
+      storageClass: "rbd-storage"
 
 trivy:
   enabled: true
