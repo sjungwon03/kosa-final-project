@@ -6,13 +6,9 @@ gitea:
 
   service:
     http:
-      type: LoadBalancer
-      annotations:
-        metallb.universe.tf/allow-shared-ip: gitea-shared
+      type: NodePort
     ssh:
-      type: LoadBalancer
-      annotations:
-        metallb.universe.tf/allow-shared-ip: gitea-shared
+      type: NodePort
 
   persistence:
     enabled: true
