@@ -2,6 +2,7 @@ global:
   hosts:
     domain: mgmt.local
     https: false
+  storageClass: rbd-storage
   nodeSelector:
     kubernetes.io/hostname: k8s-worker-plat
   ingress:
@@ -11,6 +12,9 @@ global:
     key: password
 
 gitlab:
+  gitaly:
+    persistence:
+      storageClass: rbd-storage
   webservice:
     replicaCount: 1
     minReplicas: 1
@@ -59,3 +63,17 @@ gitlab-runner:
 
 registry:
   enabled: false
+
+postgresql:
+  primary:
+    persistence:
+      storageClass: rbd-storage
+
+redis:
+  master:
+    persistence:
+      storageClass: rbd-storage
+
+minio:
+  persistence:
+    storageClass: rbd-storage

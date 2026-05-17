@@ -10,6 +10,9 @@ Helm chart 기반 서비스 배포 (MetalLB LoadBalancer)
 │   ├── metallb/             # MetalLB LoadBalancer
 │   │   ├── 01-ip-address-pool.yaml
 │   │   └── 02-metallb.yaml
+│   ├── storage/             # Ceph RBD StorageClass/Secret
+│   │   ├── 01-ceph-secret.yaml
+│   │   └── 02-rbd-storageclass.yaml
 │   ├── harbor/              # Harbor 컨테이너 레지스트리
 │   │   ├── Chart.yaml
 │   │   └── values.yaml
@@ -33,11 +36,12 @@ Helm chart 기반 서비스 배포 (MetalLB LoadBalancer)
 ## 배포
 
 ```bash
-# 모든 서비스 설치 (MetalLB + Harbor + GitLab + ArgoCD)
+# 모든 서비스 설치 (MetalLB + Ceph Storage + Harbor + GitLab + ArgoCD)
 ./scripts/deploy-devops.sh install
 
 # 개별 서비스 설치
 ./scripts/deploy-devops.sh install metallb
+./scripts/deploy-devops.sh install storage
 ./scripts/deploy-devops.sh install harbor
 ./scripts/deploy-devops.sh install gitlab
 ./scripts/deploy-devops.sh install argocd
