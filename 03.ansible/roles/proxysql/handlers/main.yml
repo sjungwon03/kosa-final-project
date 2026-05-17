@@ -1,5 +1,0 @@
----
-- name: Restart ProxySQL
-  systemd:
-    name: proxysql
-    state: restarted
