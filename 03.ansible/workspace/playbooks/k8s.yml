@@ -35,6 +35,17 @@
     ceph_rbd_storageclass_name_safe: "{{ ceph_rbd_storageclass_name | default('rbd-storage') }}"
     ceph_csi_monitors_safe: "{{ ceph_csi_monitors | default([]) }}"
   tasks:
+    - name: Ceph CSI 필수 변수 검증
+      ansible.builtin.assert:
+        that:
+          - ceph_rbd_cluster_id_safe | length > 0
+          - ceph_csi_user_id_safe | length > 0
+          - ceph_csi_user_key_safe | length > 0
+          - ceph_csi_monitors_safe | length > 0
+        fail_msg: "Ceph CSI 필수 값(cluster_id, user_id, user_key, monitors)이 비어 있습니다."
+      run_once: true
+      when: ceph_storage_enabled_safe
+
     - name: Helm 바이너리 존재 확인
       ansible.builtin.stat:
         path: "{{ ceph_helm_bin_safe }}"
@@ -120,10 +131,12 @@
           kind: StorageClass
           metadata:
             name: {{ ceph_rbd_storageclass_name_safe }}
+            annotations:
+              storageclass.kubernetes.io/is-default-class: "true"
           provisioner: rbd.csi.ceph.com
           allowVolumeExpansion: true
           reclaimPolicy: Delete
-          volumeBindingMode: WaitForFirstConsumer
+          volumeBindingMode: Immediate
           parameters:
             clusterID: {{ ceph_rbd_cluster_id_safe }}
             pool: {{ ceph_rbd_pool_safe }}
@@ -140,6 +153,22 @@
     - name: Ceph CSI Secret 적용
       ansible.builtin.command: kubectl apply -f /tmp/ceph-csi-rbd-secret.yaml
       run_once: true
+      when: ceph_storage_enabled_safe
+
+    - name: Ceph CSI provisioner 재시작 (secret/config 재로딩)
+      ansible.builtin.command: kubectl -n {{ ceph_csi_namespace_safe }} rollout restart deploy/{{ ceph_csi_release_name_safe }}-provisioner
+      run_once: true
+      when: ceph_storage_enabled_safe and ceph_csi_enabled_safe
+
+    - name: Ceph CSI provisioner rollout 대기
+      ansible.builtin.command: kubectl -n {{ ceph_csi_namespace_safe }} rollout status deploy/{{ ceph_csi_release_name_safe }}-provisioner --timeout=300s
+      run_once: true
+      when: ceph_storage_enabled_safe and ceph_csi_enabled_safe
+
+    - name: 기존 StorageClass 제거 (옵션 변경 반영)
+      ansible.builtin.command: kubectl delete sc {{ ceph_rbd_storageclass_name_safe }} --ignore-not-found=true
+      run_once: true
+      changed_when: false
       when: ceph_storage_enabled_safe
 
     - name: Ceph RBD StorageClass 적용
