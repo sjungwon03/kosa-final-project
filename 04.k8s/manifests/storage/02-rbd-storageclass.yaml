@@ -8,7 +8,7 @@ reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer
 parameters:
   # Ceph cluster FSID
-  clusterID: CHANGE_ME
+  clusterID: 861f6095-c334-413a-95a0-04e197f430c2
   # Ceph pool name
   pool: rbd-storage
   imageFeatures: layering
