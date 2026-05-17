@@ -4,91 +4,83 @@ Helm chart 기반 서비스 배포 (MetalLB LoadBalancer)
 
 ## 구조
 
-```
+```text
 04.k8s/
 ├── manifests/
 │   ├── metallb/             # MetalLB LoadBalancer
-│   │   ├── 01-ip-address-pool.yaml
-│   │   └── 02-metallb.yaml
 │   ├── storage/             # Ceph RBD StorageClass/Secret
-│   │   ├── 01-ceph-secret.yaml
-│   │   └── 02-rbd-storageclass.yaml
-│   ├── harbor/              # Harbor 컨테이너 레지스트리
-│   │   ├── Chart.yaml
-│   │   └── values.yaml
-│   ├── gitlab/              # GitLab CE Git 저장소
-│   │   ├── Chart.yaml
-│   │   └── values.yaml
-│   ├── argocd/              # ArgoCD GitOps
-│   │   ├── Chart.yaml
-│   │   └── values.yaml
+│   ├── harbor/              # Harbor 컨테이너 레지스트리 (Helm)
+│   ├── gitea/               # Gitea + Actions Runner (Helm)
+│   ├── percona-db/          # Percona Operator + PXC (Helm)
+│   ├── argocd/              # ArgoCD GitOps (Helm)
 │   ├── eks/                 # EKS 클라우드 버스팅용
 │   └── namespace.yaml
-├── argocd-apps/             # ArgoCD Application 정의
-│   ├── harbor.yaml
-│   ├── gitlab.yaml
-│   └── README.md
-├── scripts/
-│   └── deploy-devops.sh
-└── README.md
+└── scripts/
+    ├── deploy-devops.sh
+    └── upgrade-devops.sh
 ```
 
 ## 배포
 
 ```bash
-# 모든 서비스 설치 (MetalLB + Ceph Storage + Harbor + GitLab + ArgoCD)
+# 모든 서비스 설치 (MetalLB + Ceph Storage + Harbor + Gitea + Percona DB + ArgoCD)
 ./scripts/deploy-devops.sh install
 
 # 개별 서비스 설치
 ./scripts/deploy-devops.sh install metallb
 ./scripts/deploy-devops.sh install storage
 ./scripts/deploy-devops.sh install harbor
-./scripts/deploy-devops.sh install gitlab
+./scripts/deploy-devops.sh install gitea
+./scripts/deploy-devops.sh install percona-db
 ./scripts/deploy-devops.sh install argocd
 
-# 서비스 삭제
-./scripts/deploy-devops.sh uninstall harbor
+# 개별 서비스 삭제
+./scripts/deploy-devops.sh uninstall percona-db
+```
+
+## 업그레이드
+
+```bash
+# 전체 업그레이드
+./scripts/upgrade-devops.sh
+
+# 개별 업그레이드
+./scripts/upgrade-devops.sh harbor
+./scripts/upgrade-devops.sh gitea
+./scripts/upgrade-devops.sh percona-db
+./scripts/upgrade-devops.sh argocd
 ```
 
 ## LoadBalancer IP 확인
 
 ```bash
-# MetalLB IP Pool: 172.16.30.200-172.16.30.210
 kubectl get svc -n devops
-
-# Harbor LoadBalancer IP
-kubectl get svc harbor -n devops
-
-# GitLab LoadBalancer IP
-kubectl get svc gitlab-webservice -n devops
-kubectl get svc gitlab-gitlab-shell -n devops
-
-# ArgoCD LoadBalancer IP
-kubectl get svc argo-cd-argocd-server -n devops
+kubectl get svc -n devops | grep -E 'harbor|gitea|percona|argo'
 ```
 
-## DNS 등록
+## Percona DB 진입점
 
-MetalLB에서 할당된 IP를 DNS 서버에 A 레코드로 등록:
+```text
+# 클러스터 내부
+percona-db-pxc-db-haproxy.devops.svc.cluster.local:3306
 
+# 클러스터 외부
+kubectl -n devops get svc | grep percona-db
 ```
+
+## DNS 등록 예시
+
+```text
 harbor.mgmt.local    IN A    <HARBOR_LB_IP>
-gitlab.mgmt.local    IN A    <GITLAB_LB_IP>
+gitea.mgmt.local     IN A    <GITEA_LB_IP>
 argocd.mgmt.local    IN A    <ARGOCD_LB_IP>
 ```
 
-## 서비스 정보
+## 기본 계정 정보
 
-| 서비스   | DNS                   | 계정             |
-|----------|----------------------|------------------|
-| Harbor   | harbor.mgmt.local    | admin/kosa1004   |
-| GitLab   | gitlab.mgmt.local    | root/GitLabRoot123 |
-| ArgoCD   | argocd.mgmt.local    | admin            |
-
-## ArgoCD GitOps
-
-ArgoCD Application 배포:
-```bash
-kubectl apply -f argocd-apps/harbor.yaml
-kubectl apply -f argocd-apps/gitlab.yaml
-```
+| 서비스 | DNS               | 계정 |
+|--------|-------------------|------|
+| Harbor | harbor.mgmt.local | admin / values.yaml에 설정된 값 |
+| Gitea  | gitea.mgmt.local  | gitea_admin / values.yaml에 설정된 값 |
+| Percona DB | 내부/외부 Service | root / values.yaml에 설정된 값 |
+| ArgoCD | argocd.mgmt.local | admin |

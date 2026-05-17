@@ -8,10 +8,10 @@ MANIFESTS_DIR="${SCRIPT_DIR}/../manifests"
 if [ "$#" -lt 1 ]; then
   echo "Usage: $0 <ACTION> [COMPONENT]"
   echo "Example:"
-  echo "  $0 install                # 모든 서비스 설치 (MetalLB + Ceph Storage + Harbor + GitLab + ArgoCD)"
+  echo "  $0 install                # 모든 서비스 설치 (MetalLB + Ceph Storage + Harbor + Gitea + Percona DB + ArgoCD)"
   echo "  $0 install harbor         # harbor만 설치"
   echo "  $0 uninstall              # 모든 서비스 삭제"
-  echo "  $0 uninstall gitlab       # gitlab만 삭제"
+  echo "  $0 uninstall percona-db   # percona-db만 삭제"
   exit 1
 fi
 
@@ -91,8 +91,11 @@ if [ -n "$COMPONENT" ]; then
     harbor)
       install_helm_chart harbor "${MANIFESTS_DIR}/harbor"
       ;;
-    gitlab)
-      install_helm_chart gitlab "${MANIFESTS_DIR}/gitlab"
+    percona-db)
+      install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db"
+      ;;
+    gitea)
+      install_helm_chart gitea "${MANIFESTS_DIR}/gitea"
       ;;
     argocd)
       install_helm_chart argocd "${MANIFESTS_DIR}/argocd"
@@ -106,7 +109,8 @@ else
   install_metallb
   install_storage
   install_helm_chart harbor "${MANIFESTS_DIR}/harbor"
-  install_helm_chart gitlab "${MANIFESTS_DIR}/gitlab"
+  install_helm_chart gitea "${MANIFESTS_DIR}/gitea"
+  install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db"
   install_helm_chart argocd "${MANIFESTS_DIR}/argocd"
 fi
 

@@ -1,0 +1,10 @@
+apiVersion: v2
+name: gitea-deployment
+description: Gitea Helm chart deployment for ArgoCD
+type: application
+version: 1.0.0
+appVersion: 1.23.0
+dependencies:
+  - name: gitea
+    version: 12.1.0
+    repository: "https://dl.gitea.com/charts/"

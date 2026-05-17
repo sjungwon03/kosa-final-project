@@ -13,15 +13,17 @@ usage() {
 Usage: $0 [component]
 
 component:
-  all      Upgrade all (harbor, gitlab, argocd) [default]
+  all      Upgrade all (harbor, gitea, percona-db, argocd) [default]
   harbor   Upgrade harbor only
-  gitlab   Upgrade gitlab only
+  gitea       Upgrade gitea only
+  percona-db  Upgrade percona-db only
   argocd   Upgrade argocd only
 
 Examples:
   $0
   $0 all
-  $0 gitlab
+  $0 gitea
+  $0 percona-db
   HELM_TIMEOUT=1200s $0 harbor
 USAGE
 }
@@ -105,14 +107,18 @@ ensure_namespace
 case "${COMPONENT}" in
   all)
     upgrade_chart harbor "${MANIFESTS_DIR}/harbor"
-    upgrade_chart gitlab "${MANIFESTS_DIR}/gitlab"
+    upgrade_chart gitea "${MANIFESTS_DIR}/gitea"
+    upgrade_chart percona-db "${MANIFESTS_DIR}/percona-db"
     upgrade_chart argocd "${MANIFESTS_DIR}/argocd"
     ;;
   harbor)
     upgrade_chart harbor "${MANIFESTS_DIR}/harbor"
     ;;
-  gitlab)
-    upgrade_chart gitlab "${MANIFESTS_DIR}/gitlab"
+  gitea)
+    upgrade_chart gitea "${MANIFESTS_DIR}/gitea"
+    ;;
+  percona-db)
+    upgrade_chart percona-db "${MANIFESTS_DIR}/percona-db"
     ;;
   argocd)
     upgrade_chart argocd "${MANIFESTS_DIR}/argocd"
