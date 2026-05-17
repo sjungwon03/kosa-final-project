@@ -1,6 +1,8 @@
 # Platform 서비스 배포
 
-Helm chart 기반 서비스 배포 (MetalLB LoadBalancer)
+Helm chart 기반 DevOps 서비스 배포
+
+`MetalLB`와 `Ceph CSI/StorageClass`는 `03.ansible/workspace/playbooks/k8s.yml`에서 관리합니다.
 
 ## 구조
 
@@ -23,12 +25,10 @@ Helm chart 기반 서비스 배포 (MetalLB LoadBalancer)
 ## 배포
 
 ```bash
-# 모든 서비스 설치 (MetalLB + Ceph Storage + Harbor + Gitea + Percona DB + ArgoCD)
+# 모든 DevOps 서비스 설치 (Harbor + Gitea + Percona DB + ArgoCD)
 ./scripts/deploy-devops.sh install
 
 # 개별 서비스 설치
-./scripts/deploy-devops.sh install metallb
-./scripts/deploy-devops.sh install storage
 ./scripts/deploy-devops.sh install harbor
 ./scripts/deploy-devops.sh install gitea
 ./scripts/deploy-devops.sh install percona-db

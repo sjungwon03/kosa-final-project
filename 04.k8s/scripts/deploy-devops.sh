@@ -8,7 +8,7 @@ MANIFESTS_DIR="${SCRIPT_DIR}/../manifests"
 if [ "$#" -lt 1 ]; then
   echo "Usage: $0 <ACTION> [COMPONENT]"
   echo "Example:"
-  echo "  $0 install                # 모든 서비스 설치 (MetalLB + Ceph Storage + Harbor + Gitea + Percona DB + ArgoCD)"
+  echo "  $0 install                # 모든 DevOps 서비스 설치 (Harbor + Gitea + Percona DB + ArgoCD)"
   echo "  $0 install harbor         # harbor만 설치"
   echo "  $0 uninstall              # 모든 서비스 삭제"
   echo "  $0 uninstall percona-db   # percona-db만 삭제"
@@ -27,16 +27,6 @@ NAMESPACE="devops"
 
 create_namespace() {
   kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
-}
-
-install_metallb() {
-  echo "[$(date '+%F %T')] Installing MetalLB..."
-  kubectl apply -f "${MANIFESTS_DIR}/metallb/"
-}
-
-install_storage() {
-  echo "[$(date '+%F %T')] Installing Ceph storage resources..."
-  kubectl apply -f "${MANIFESTS_DIR}/storage/"
 }
 
 install_helm_chart() {
@@ -75,18 +65,12 @@ create_namespace
 if [ -n "$COMPONENT" ]; then
   case $COMPONENT in
     metallb)
-      if [[ "$ACTION" == "install" ]]; then
-        install_metallb
-      else
-        kubectl delete -f "${MANIFESTS_DIR}/metallb/" --ignore-not-found=true
-      fi
+      echo "ERROR: 'metallb' is managed by Ansible (playbooks/k8s.yml). Remove/install from Ansible only."
+      exit 1
       ;;
     storage)
-      if [[ "$ACTION" == "install" ]]; then
-        install_storage
-      else
-        kubectl delete -f "${MANIFESTS_DIR}/storage/" --ignore-not-found=true
-      fi
+      echo "ERROR: 'storage' (Ceph CSI/StorageClass) is managed by Ansible (playbooks/k8s.yml). Remove/install from Ansible only."
+      exit 1
       ;;
     harbor)
       install_helm_chart harbor "${MANIFESTS_DIR}/harbor"
@@ -106,8 +90,6 @@ if [ -n "$COMPONENT" ]; then
       ;;
   esac
 else
-  install_metallb
-  install_storage
   install_helm_chart harbor "${MANIFESTS_DIR}/harbor"
   install_helm_chart gitea "${MANIFESTS_DIR}/gitea"
   install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db"
