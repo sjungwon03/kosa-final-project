@@ -14,5 +14,9 @@ spec:
           domain: mgmt.local
         ingress:
           configureCertmanager: false
+      nginx-ingress:
+        controller:
+          service:
+            type: LoadBalancer
       certmanager-issuer:
         email: admin@mgmt.local
