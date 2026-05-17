@@ -1,0 +1,52 @@
+name: Trouble
+description: FlaskApp 오류, 장애, 트러블슈팅
+title: "[Trouble] "
+labels: ["type:bug", "status:blocked"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 문제 상황
+      placeholder: 어떤 문제가 발생했나요?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: 영향 범위
+      options:
+        - local
+        - docker-compose
+        - kubernetes
+        - database
+        - storage
+        - unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 로그 / 에러
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: 확인한 내용 / 다음 액션
+      placeholder: |
+        - 확인한 내용:
+        - 다음 액션:
+    validations:
+      required: true
+
+  - type: input
+    id: owner
+    attributes:
+      label: 담당
+      placeholder: "정: @username / 부: @username"
+    validations:
+      required: false

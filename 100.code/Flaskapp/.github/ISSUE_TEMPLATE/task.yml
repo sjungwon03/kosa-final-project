@@ -1,0 +1,64 @@
+name: Task
+description: FlaskApp 구현, 설정, 배포 작업
+title: "[Task] "
+labels: ["type:task"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 작업 내용
+      placeholder: 무엇을 구현하거나 정리하나요?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 담당 영역
+      options:
+        - app
+        - docker
+        - config
+        - database
+        - storage
+        - frontend
+        - test
+        - docs
+    validations:
+      required: true
+
+  - type: input
+    id: owner
+    attributes:
+      label: 담당
+      placeholder: "정: @username / 부: @username"
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: 완료 기준
+      placeholder: |
+        - [ ] 
+        - [ ] 
+    validations:
+      required: true
+
+  - type: textarea
+    id: test
+    attributes:
+      label: 검증 방법
+      placeholder: |
+        실행할 명령어 또는 확인 방법을 적어주세요.
+        예: docker compose up, curl /health, pytest
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 참고 사항
+      placeholder: 환경변수, Secret, DB/S3 의존성, 관련 문서 링크
+    validations:
+      required: false

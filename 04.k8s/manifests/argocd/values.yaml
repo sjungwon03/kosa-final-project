@@ -1,0 +1,29 @@
+argo-cd:
+  global:
+    storageClass: rbd-storage
+    nodeSelector:
+      kubernetes.io/hostname: k8s-worker-plat
+
+  controller:
+    replicas: 1
+  server:
+    replicas: 1
+    extraArgs:
+      - --insecure
+    service:
+      type: LoadBalancer
+      annotations:
+        metallb.universe.tf/allow-shared-ip: argocd-shared
+  repoServer:
+    replicas: 1
+
+  redis:
+    persistence:
+      enabled: true
+      storageClass: rbd-storage
+      size: 8Gi
+
+  configs:
+    params:
+      server:
+        insecure: true

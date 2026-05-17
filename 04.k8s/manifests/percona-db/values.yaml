@@ -1,0 +1,72 @@
+pxc-operator:
+  watchAllNamespaces: false
+
+pxc-db:
+  # releaseName: percona-db -> cluster name will be generated from release
+  secrets:
+    passwords:
+      root: "kosa1004"
+      xtrabackup: "kosa1004"
+      monitor: "kosa1004"
+      clustercheck: "kosa1004"
+      proxyadmin: "kosa1004"
+      operator: "kosa1004"
+      replication: "kosa1004"
+
+  pxc:
+    size: 3
+    persistence:
+      enabled: true
+      storageClass: rbd-storage
+      size: 20Gi
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values: ["pxc"]
+            topologyKey: kubernetes.io/hostname
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values:
+                    - k8s-worker-01
+                    - k8s-worker-02
+                    - k8s-worker-03
+
+  haproxy:
+    enabled: true
+    size: 3
+    serviceType: LoadBalancer
+    annotations:
+      metallb.universe.tf/allow-shared-ip: percona-shared
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values: ["haproxy"]
+            topologyKey: kubernetes.io/hostname
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values:
+                    - k8s-worker-01
+                    - k8s-worker-02
+                    - k8s-worker-03
+
+  proxysql:
+    enabled: false
+
+  backup:
+    enabled: false
