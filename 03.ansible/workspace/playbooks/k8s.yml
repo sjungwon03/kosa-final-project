@@ -182,7 +182,19 @@
     - name: MetalLB speaker rollout 대기
       ansible.builtin.command: "kubectl -n {{ metallb_namespace_safe }} rollout status ds/speaker --timeout=300s"
       run_once: true
+      register: metallb_speaker_rollout
+      failed_when: false
+      changed_when: metallb_speaker_rollout.rc == 0
       when: metallb_enabled_safe
+
+    - name: MetalLB speaker rollout 경고 출력
+      ansible.builtin.debug:
+        msg: "MetalLB speaker rollout did not fully complete within timeout. current output: {{ metallb_speaker_rollout.stdout | default('') }}"
+      run_once: true
+      when:
+        - metallb_enabled_safe
+        - metallb_speaker_rollout is defined
+        - metallb_speaker_rollout.rc != 0
 
     - name: MetalLB IPAddressPool manifest 생성
       ansible.builtin.copy:

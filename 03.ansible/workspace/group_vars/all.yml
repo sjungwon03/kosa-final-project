@@ -24,12 +24,12 @@ ceph_csi_monitors:
   - "10.10.10.16:6789"
 
 # MetalLB
-metallb_enabled: true
-metallb_namespace: metallb-system
 metallb_manifest_url: "https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml"
-metallb_ipaddresspool_name: primary-pool
-metallb_l2advertisement_name: primary-l2adv
+metallb_enabled: true
 metallb_address_pools:
   - "172.16.30.200-172.16.30.249"
+metallb_namespace: metallb-system
+metallb_ipaddresspool_name: primary-pool
+metallb_l2advertisement_name: primary-l2adv
 metallb_auto_assign: true
 metallb_avoid_buggy_ips: true
