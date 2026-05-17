@@ -13,14 +13,28 @@ global:
 gitlab:
   webservice:
     replicaCount: 1
+    minReplicas: 1
+    maxReplicas: 1
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1200Mi
     service:
       type: LoadBalancer
   sidekiq:
     replicaCount: 1
+    minReplicas: 1
+    maxReplicas: 1
+    resources:
+      requests:
+        cpu: 300m
+        memory: 1200Mi
   gitlab-shell:
     replicaCount: 1
     service:
       type: LoadBalancer
+  kas:
+    enabled: false
   initialRootPassword:
     secret: gitlab-initial-root-password
     key: password
