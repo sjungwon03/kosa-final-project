@@ -1,13 +1,13 @@
 expose:
-  type: loadBalancer
-  loadBalancer:
-    IP: ""
-    annotations:
-      metallb.universe.tf/allow-shared-ip: harbor-shared
+  type: nodePort
+  nodePort:
+    ports:
+      http:
+        port: 30080
   tls:
     enabled: false
 
-externalURL: http://harbor.mgmt.local
+externalURL: http://harbor.mgmt.local:30080
 
 harborAdminPassword: "kosa1004"
 persistence:
