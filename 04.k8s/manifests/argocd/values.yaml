@@ -1,4 +1,8 @@
 argo-cd:
+  global:
+    nodeSelector:
+      kubernetes.io/hostname: k8s-worker-plat
+
   controller:
     replicas: 1
   server:
@@ -14,6 +18,3 @@ argo-cd:
     params:
       server:
         insecure: true
-
-  nodeSelector:
-    kubernetes.io/hostname: k8s-worker-plat

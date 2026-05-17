@@ -2,6 +2,8 @@ global:
   hosts:
     domain: mgmt.local
     https: false
+  nodeSelector:
+    kubernetes.io/hostname: k8s-worker-plat
   ingress:
     configureCertmanager: false
   initialRootPassword:
@@ -43,6 +45,3 @@ gitlab-runner:
 
 registry:
   enabled: false
-
-nodeSelector:
-  kubernetes.io/hostname: k8s-worker-plat
