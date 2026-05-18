@@ -1,1 +1,65 @@
 ---
+# siem: Wazuh Manager + Indexer + Dashboard (단일 노드)
+# Packer에서 wazuh-agent 패키지만 설치됨 — 서버 패키지는 여기서 설치
+# TODO: 폐쇄망 적용 전 — Wazuh apt 미러 구성 또는 오프라인 패키지 준비 필요
+
+# ── Wazuh apt 저장소 ──────────────────────────────────────────
+- name: Wazuh GPG 키 등록
+  apt_key:
+    url: https://packages.wazuh.com/key/GPG-KEY-WAZUH
+    state: present
+
+- name: Wazuh apt 저장소 등록
+  apt_repository:
+    repo: "deb https://packages.wazuh.com/4.x/apt/ stable main"
+    state: present
+
+- name: apt 캐시 업데이트
+  apt:
+    update_cache: true
+
+# ── Wazuh Indexer (OpenSearch 기반) ───────────────────────────
+- name: Wazuh Indexer 설치
+  apt:
+    name: "wazuh-indexer={{ wazuh_indexer_version }}-1"
+    state: present
+
+- name: Wazuh Indexer 활성화 및 시작
+  systemd:
+    name: wazuh-indexer
+    enabled: true
+    state: started
+
+# ── Wazuh Manager ─────────────────────────────────────────────
+- name: Wazuh Manager 설치
+  apt:
+    name: "wazuh-manager={{ wazuh_manager_version }}-1"
+    state: present
+
+- name: Wazuh Manager 활성화 및 시작
+  systemd:
+    name: wazuh-manager
+    enabled: true
+    state: started
+
+# ── Wazuh Dashboard ───────────────────────────────────────────
+- name: Wazuh Dashboard 설치
+  apt:
+    name: "wazuh-dashboard={{ wazuh_dashboard_version }}-1"
+    state: present
+
+- name: Wazuh Dashboard 활성화 및 시작
+  systemd:
+    name: wazuh-dashboard
+    enabled: true
+    state: started
+
+# ── 에이전트 버전 핀 고정 (업그레이드 방지) ───────────────────
+- name: Wazuh 패키지 버전 고정
+  dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+    - wazuh-manager
+    - wazuh-indexer
+    - wazuh-dashboard
