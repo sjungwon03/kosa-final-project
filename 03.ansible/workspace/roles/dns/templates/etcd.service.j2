@@ -11,7 +11,12 @@ ExecStart=/usr/local/bin/etcd \
   --name dns-etcd-{{ inventory_hostname }} \
   --data-dir {{ etcd_data_dir }} \
   --listen-client-urls http://0.0.0.0:2379 \
-  --advertise-client-urls http://{{ ansible_host }}:2379
+  --advertise-client-urls http://{{ ansible_host }}:2379 \
+  --listen-peer-urls http://0.0.0.0:2380 \
+  --initial-advertise-peer-urls http://{{ ansible_host }}:2380 \
+  --initial-cluster {% for host in groups['dns_servers'] %}dns-etcd-{{ host }}=http://{{ host }}:2380{% if not loop.last %},{% endif %}{% endfor %} \
+  --initial-cluster-token etcd-cluster-dns \
+  --initial-cluster-state new
 Environment=ETCDCTL_API=3
 Restart=always
 RestartSec=5s
