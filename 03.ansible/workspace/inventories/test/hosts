@@ -1,31 +1,33 @@
 [dns_servers]
-172.16.30.111
-172.16.30.112
+172.16.30.210 keepalived_state=MASTER keepalived_priority=101
+172.16.30.211 keepalived_state=BACKUP keepalived_priority=100
 
 [vault]
-172.16.30.120
-172.16.30.121
+172.16.30.215
 
 [loadbalancers]
-# test 환경 로드밸런서 (필요 시 할당)
+# 필요 시 추가
 
 [k8s_masters]
-172.16.30.130
+172.16.30.200 keepalived_state=MASTER keepalived_priority=101
+172.16.30.201 keepalived_state=BACKUP keepalived_priority=100
 
 [k8s_workers]
-172.16.30.141
+172.16.30.205
+172.16.30.207
+172.16.30.209
 
 [registry]
-172.16.30.150
+# 필요 시 추가
 
 [cicd]
-172.16.30.155
+# 필요 시 추가
 
 [siem]
-172.16.30.170
+# 필요 시 추가
 
 [monitoring_nodes]
-172.16.30.180
+# 필요 시 추가
 
 [control]
 172.16.30.7
