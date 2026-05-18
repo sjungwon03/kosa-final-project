@@ -12,6 +12,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu" {
   name      = each.key
   node_name = each.value.node
   vm_id     = each.value.vm_id
+  tags      = distinct(concat(var.vm_tags, try(each.value.tags, [])))
 
   clone {
     vm_id     = each.value.template_vm_id
@@ -37,8 +38,18 @@ resource "proxmox_virtual_environment_vm" "ubuntu" {
     firewall = false
   }
 
+  dynamic "network_device" {
+    for_each = try(each.value.storage_ip, null) != null ? [1] : []
+    content {
+      bridge   = each.value.storage_bridge
+      model    = "virtio"
+      firewall = false
+      mtu      = each.value.storage_mtu
+    }
+  }
+
   disk {
-    datastore_id = "rbd-storage"
+    datastore_id = each.value.datastore_id
     interface    = "scsi0"
     size         = each.value.disk_size
     discard      = "on"
@@ -56,12 +67,23 @@ resource "proxmox_virtual_environment_vm" "ubuntu" {
         gateway = "172.16.${each.value.vlan}.1"
       }
     }
+    dynamic "ip_config" {
+      for_each = try(each.value.storage_ip, null) != null ? [1] : []
+      content {
+        ipv4 {
+          address = "${each.value.storage_ip}/${each.value.storage_cidr}"
+        }
+      }
+    }
     user_account {
       username = "kosa"
       password = var.vm_password
       keys     = length(var.ssh_public_key) > 0 ? var.ssh_public_key : compact([try(trimspace(file(pathexpand("~/.ssh/ansible-control.pub"))), "")])
     }
   }
+
+  # TODO: 배포된 VM에 protection 적용 방법 검토 후 활성화
+  # protection = each.value.protection
 
   agent {
     enabled = true
