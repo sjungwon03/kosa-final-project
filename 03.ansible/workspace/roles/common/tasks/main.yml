@@ -1,1 +1,85 @@
 ---
+# common: Packer에서 설치된 에이전트 활성화 + SSH 강화
+# 대상: 전체 VM
+
+# ── apt 락 해제 대기 ──────────────────────────────────────────
+# VM 부팅 직후 unattended-upgrades가 dpkg lock을 잡고 있으면 이후 apt 태스크 전체 실패
+# 모든 apt 작업 전 최대 5분 대기 후 진행
+- name: apt 자동 업데이트 타이머 및 서비스 중지
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+  failed_when: false
+  loop:
+    - apt-daily.timer
+    - apt-daily-upgrade.timer
+    - unattended-upgrades
+
+- name: apt 락 해제 대기
+  shell: |
+    while fuser /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/cache/apt/archives/lock >/dev/null 2>&1; do
+      sleep 3
+    done
+  changed_when: false
+  timeout: 300
+
+# ── SSH 강화 ───────────────────────────────────────────────────
+- name: SSH 패스워드 인증 비활성화 (Packer 빌드용 설정 제거)
+  file:
+    path: /etc/ssh/sshd_config.d/10-password.conf
+    state: absent
+  notify: restart sshd
+
+- name: auditd 활성화 및 시작
+  systemd:
+    name: auditd
+    enabled: true
+    state: started
+
+- name: promtail 설정 디렉토리 생성
+  file:
+    path: /etc/promtail
+    state: directory
+    mode: '0755'
+
+- name: promtail 설정 파일 배포
+  template:
+    src: promtail.yml.j2
+    dest: /etc/promtail/config.yml
+  notify: restart promtail
+
+- name: promtail 활성화 및 시작
+  systemd:
+    name: promtail
+    enabled: true
+    state: started
+  failed_when: false
+
+- name: wazuh-agent 관리자 주소 설정
+  lineinfile:
+    path: /var/ossec/etc/ossec.conf
+    regexp: '<address>.*</address>'
+    line: '      <address>{{ wazuh_manager_ip }}</address>'
+  notify: restart wazuh-agent
+  failed_when: false
+
+- name: wazuh-agent 활성화 및 시작
+  systemd:
+    name: wazuh-agent
+    enabled: true
+    state: started
+  failed_when: false
+
+# TODO(폐쇄망): Nexus apt 프록시 저장소로 전환
+- name: prometheus-node-exporter 패키지 설치
+  apt:
+    name: prometheus-node-exporter
+    state: present
+    update_cache: yes
+
+- name: prometheus-node-exporter 활성화 및 시작
+  systemd:
+    name: prometheus-node-exporter
+    enabled: true
+    state: started
+
