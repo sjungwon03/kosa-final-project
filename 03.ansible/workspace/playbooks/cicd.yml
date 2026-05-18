@@ -1,0 +1,6 @@
+---
+- name: CICD (Gitea + Act_Runner) 설치
+  hosts: cicd
+  roles:
+    - common
+    - cicd
