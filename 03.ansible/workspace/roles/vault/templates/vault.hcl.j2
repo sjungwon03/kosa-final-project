@@ -1,0 +1,20 @@
+ui = {{ vault_ui | lower }}
+
+storage "raft" {
+  path    = "{{ vault_data_dir }}"
+  node_id = "{{ inventory_hostname }}"
+
+{% for host in groups['vault'] %}
+  retry_join {
+    leader_api_addr = "http://{{ host }}:{{ vault_api_port }}"
+  }
+{% endfor %}
+}
+
+listener "tcp" {
+  address     = "0.0.0.0:{{ vault_api_port }}"
+  tls_disable = true  # TODO: Vault PKI로 TLS 인증서 발급 후 활성화
+}
+
+api_addr     = "http://{{ ansible_default_ipv4.address }}:{{ vault_api_port }}"
+cluster_addr = "http://{{ ansible_default_ipv4.address }}:{{ vault_cluster_port }}"
