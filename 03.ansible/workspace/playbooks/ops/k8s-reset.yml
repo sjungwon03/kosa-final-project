@@ -1,0 +1,34 @@
+---
+# ops/k8s-reset.yml — kubeadm 초기화 상태 제거
+# 사용법:
+#   ansible-playbook playbooks/ops/k8s-reset.yml -i inventories/prod/hosts --limit 172.16.30.32
+#
+# 용도:
+#   - 추가 마스터 join 실패 후 재배포 전에 노드 상태를 초기화
+#   - 워커 재조인 전 kubeadm 흔적 제거
+
+- name: K8s 노드 초기화
+  hosts: k8s_masters:k8s_workers
+  become: true
+  tasks:
+    - name: kubeadm reset 실행
+      command: kubeadm reset -f
+      register: kubeadm_reset_result
+      changed_when: kubeadm_reset_result.rc == 0
+      failed_when: kubeadm_reset_result.rc not in [0]
+
+    - name: K8s 관련 잔여 디렉토리 제거
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/kubernetes
+        - /etc/cni/net.d
+        - /var/lib/cni
+        - /var/lib/kubelet
+
+    - name: kubelet 재시작
+      systemd:
+        name: kubelet
+        state: restarted
+      ignore_errors: true
