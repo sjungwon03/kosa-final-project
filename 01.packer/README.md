@@ -62,7 +62,7 @@
 | 항목 | 내용 |
 |---|---|
 | cloud-init | rbd-storage에 드라이브 생성 |
-| SSH 인증 | 빌드 완료 후 패스워드 인증 비활성화, 키 인증만 허용 |
+| SSH 인증 | 빌드 중 패스워드 인증 활성화(10-password.conf), 비활성화는 Ansible에서 처리 |
 | qemu-guest-agent | 활성화 (Proxmox 연동) |
 | 스토리지 | Ceph rbd-storage (클론 소스와 동일 풀) |
 | 빌드 정보 | `/home/kosa/build-info.txt` 파일에 템플릿 이름, VMID, 빌드 시간, Git 정보 기록 |
@@ -79,9 +79,11 @@
 | promtail | Grafana APT | Grafana Loki 로그 수집 에이전트 설치, 활성화는 Ansible에서 처리 |
 | wazuh-agent | Wazuh 4.x APT | SIEM/보안 모니터링 에이전트 설치, 활성화는 Ansible에서 처리 |
 
+> [!NOTE]: Node Exporter는 템플릿에 포함되지 않으며, Ansible에서 패키지 설치 및 서비스 실행을 처리함
+
 ### 기본 계정
 - username: kosa
-- password: 
+- password: `ssh-credentials.pkrvars.hcl`의 `ssh_password` 값
 - sudo: NOPASSWD
 
 ### 사전 조건
