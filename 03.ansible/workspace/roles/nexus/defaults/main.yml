@@ -1,0 +1,5 @@
+---
+# roles/nexus/defaults/main.yml
+nexus_version: "3.68.0-04"
+nexus_port: 8081
+nexus_data_dir: /opt/nexus/data
