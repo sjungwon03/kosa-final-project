@@ -1,18 +1,48 @@
 ---
 # DNS 서버 Keepalived MASTER/BACKUP 설정은 hosts 파일에서 지정
 
-# 등록할 DNS 레코드 목록
+# CoreDNS에서 관리할 기본 도메인 (기본값)
+dns_domain: "mgmt.local"
+
+# [운영 환경] 전체 DNS 레코드 리스트 (CoreDNS etcd 방식)
+# 형식: { name: "호스트명", ip: "아이피", domain: "도메인(선택)" }
 dns_records:
-  # K8s 클러스터
-  - { name: "k8s-vip",        ip: "172.16.30.30" }   # K8s 내부 VIP (Keepalived)
-  - { name: "k8s-master-01",  ip: "172.16.30.31" }
-  - { name: "k8s-master-02",  ip: "172.16.30.32" }
-  - { name: "k8s-master-03",  ip: "172.16.30.33" }
-  # 외부 진입점
-  - { name: "haproxy-vip",    ip: "172.16.20.25" }   # HAProxy VIP (외부 → K8s API)
-  # 서비스
-  - { name: "registry",       ip: "172.16.30.50" }
-  - { name: "monitoring",     ip: "172.16.30.80" }
-  - { name: "siem",           ip: "172.16.30.70" }
-  - { name: "vault",          ip: "172.16.30.20" }
-  - { name: "cicd",           ip: "172.16.30.55" }
+  # 1. 인프라 공통 (VIP)
+  - { name: "dns",           ip: "172.16.30.10", domain: "svc.local" }
+  - { name: "haproxy",       ip: "172.16.20.25", domain: "svc.local" }
+  - { name: "db-cluster",    ip: "172.16.30.60", domain: "svc.local" }
+
+  # 2. DNS 서버
+  - { name: "dns-01",        ip: "172.16.30.11", domain: "svc.local" }
+  - { name: "dns-02",        ip: "172.16.30.12", domain: "svc.local" }
+
+  # 3. K8s 클러스터
+  - { name: "master-01",     ip: "172.16.30.31", domain: "k8s.local" }
+  - { name: "master-02",     ip: "172.16.30.32", domain: "k8s.local" }
+  - { name: "master-03",     ip: "172.16.30.33", domain: "k8s.local" }
+  - { name: "node-plat",     ip: "172.16.30.40", domain: "k8s.local" }
+  - { name: "node-01",       ip: "172.16.30.45", domain: "k8s.local" }
+  - { name: "node-02",       ip: "172.16.30.46", domain: "k8s.local" }
+  - { name: "node-03",       ip: "172.16.30.47", domain: "k8s.local" }
+
+  # 4. 데이터베이스 (Percona XtraDB Cluster + ProxySQL)
+  - { name: "sql-01",        ip: "172.16.30.61", domain: "svc.local" }
+  - { name: "sql-02",        ip: "172.16.30.62", domain: "svc.local" }
+  - { name: "percona-01",    ip: "172.16.30.65", domain: "svc.local" }
+  - { name: "percona-02",    ip: "172.16.30.66", domain: "svc.local" }
+  - { name: "percona-03",    ip: "172.16.30.67", domain: "svc.local" }
+
+  # 5. 보안 및 공통 서비스
+  - { name: "vault",         ip: "172.16.30.20", domain: "sec.local" }
+  - { name: "vault-01",      ip: "172.16.30.21", domain: "sec.local" }
+  - { name: "vault-02",      ip: "172.16.30.22", domain: "sec.local" }
+  - { name: "nexus",         ip: "172.16.30.15",  domain: "mgmt.local" }
+  - { name: "minio",         ip: "172.16.30.70",  domain: "mgmt.local" }
+  - { name: "siem",          ip: "172.16.30.85",  domain: "mgmt.local" }
+  - { name: "monitor",       ip: "172.16.30.90",  domain: "mgmt.local" }
+
+  # 6. K8s DevOps 서비스 (MetalLB LoadBalancer, pool: 172.16.30.200-249)
+  - { name: "harbor",        ip: "172.16.30.200", domain: "mgmt.local" }
+  - { name: "gitea",         ip: "172.16.30.201", domain: "mgmt.local" }
+  - { name: "argocd",        ip: "172.16.30.202", domain: "mgmt.local" }
+  - { name: "gitlab",        ip: "172.16.30.203", domain: "mgmt.local" }
