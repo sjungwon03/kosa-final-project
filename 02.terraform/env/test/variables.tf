@@ -26,12 +26,19 @@ variable "vms" {
     vlan           = number
     bridge         = string
     node           = string
+    storage_ip     = optional(string)
+    storage_bridge = optional(string, "vmbr1")
+    storage_cidr   = optional(number, 24)
+    storage_mtu    = optional(number, 9000)
     cores          = optional(number, 2)
     memory         = optional(number, 2048)
     disk_size      = optional(number, 10)
+    datastore_id   = optional(string, "rbd-storage")
     template_vm_id = optional(number, 9003)
+    tags           = optional(list(string), [])
+    protection     = optional(bool, false)
   }))
-  description = "배포할 VM 목록 — 반드시 -var-file로 주입 (tfvars/ 참고)"
+  description = "배포할 VM 목록, 반드시 -var-file로 주입 (tfvars/ 참고)"
 }
 
 variable "vm_nameserver" {
