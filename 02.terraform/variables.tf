@@ -20,13 +20,26 @@ variable "vms" {
     vlan           = number
     bridge         = string
     node           = string
+    storage_ip     = optional(string)
+    storage_bridge = optional(string, "vmbr1")
+    storage_cidr   = optional(number, 24)
+    storage_mtu    = optional(number, 9000)
     cores          = optional(number, 2)
     memory         = optional(number, 2048)
     disk_size      = optional(number, 10)
+    datastore_id   = optional(string, "rbd-storage")
     template_vm_id = optional(number, 9003)
+    tags           = optional(list(string), [])
+    protection     = optional(bool, false)
   }))
   default     = {}
   description = "VM 목록 — template_vm_id 미지정 시 9003(common) 사용, K8s 노드는 9005 지정"
+}
+
+variable "vm_tags" {
+  type        = list(string)
+  default     = ["kosa", "managed-by-terraform"]
+  description = "모든 VM에 공통으로 적용할 Proxmox 태그"
 }
 
 variable "vm_nameserver" {
