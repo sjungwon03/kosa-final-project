@@ -105,6 +105,15 @@ if [ -n "$COMPONENT" ]; then
       if [[ "$ACTION" == "install" ]]; then
         create_namespace "percona-db"
         install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db" "percona-db"
+        # pxc-operator CRD 등록 대기 후 pxc-db CR 재적용 (타이밍 이슈 방지)
+        echo "[$(date '+%F %T')] Waiting for pxc-operator to register CRDs..."
+        kubectl rollout status deployment/percona-db-pxc-operator -n percona-db --timeout=300s
+        echo "[$(date '+%F %T')] Re-applying pxc-db CR..."
+        helm upgrade percona-db "${MANIFESTS_DIR}/percona-db" \
+          --namespace "percona-db" \
+          -f "${MANIFESTS_DIR}/percona-db/values.yaml" \
+          --reset-values \
+          --timeout 600s
       else
         uninstall_helm_chart percona-db "percona-db"
       fi
