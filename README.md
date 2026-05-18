@@ -20,8 +20,8 @@
 ├── 02.terraform/       # Proxmox VM 프로비저닝 (IaC)
 ├── 03.ansible/         # OS 설정 및 서비스 오케스트레이션
 ├── 04.k8s/             # Kubernetes 리소스 매니페스트 (YAML)
-├── 05.cicd/            # Gitea + act_runner 인프라 CI (Terraform/Ansible 자동화, Nexus 미러링)
-├── 06.argocd/          # ArgoCD GitOps CD — 웹앱 서비스 K8s 배포 (팀원 담당)
+├── 05.cicd/            # GitLab + GitLab Runner 인프라 CICD (Terraform/Ansible 자동화, Nexus 미러링)
+├── 06.argocd/          # ArgoCD GitOps CD (웹앱 서비스 K8s 배포)
 ├── 70.security/        # 보안 관제 및 에이전트 설정 (Wazuh)
 ├── 80.monitoring/      # 관측성 스택 구축 (PLG)
 └── 99.docs/            # 프로젝트 통합 산출물
@@ -31,17 +31,23 @@
 ## 서비스 접근 아키텍처
 
 **외부 접속 및 트래픽 흐름**
-- 외부 사용자 -> pfSense 공인 IP -> pfSense (Port Forwarding) -> HAProxy VIP (172.16.20.25) -> 내부 서비스
-- HAProxy L7 라우팅: HTTP Host 헤더(도메인) 기반으로 내부 서비스 분기 (Gitea, Nexus 등)
+- 공인 IP 미보유로 AWS EC2를 엣지로 사용
+- 외부 사용자 → 도메인(DNS: EC2 공인 IP) → EC2 Nginx(리버스 프록시) → WireGuard VPN → pfSense → HAProxy VIP → 내부 서비스
+- HAProxy L7 라우팅: HTTP Host 헤더(도메인) 기반으로 내부 서비스 분기 (GitLab, Nexus 등)
 
 ```text
 +-----------------------+
 |     External User     |
 +-----------+-----------+
-            │
+            │ DNS (도메인 → EC2 공인 IP)
+            ▼
++-----------------------+
+|   AWS EC2 (Nginx)     | (공인 IP, 리버스 프록시)
++-----------+-----------+
+            │ WireGuard VPN 터널
             ▼
 +-----------+-----------+
-|        pfSense        | (NAT/Port Forwarding)
+|        pfSense        |
 +-----------+-----------+
             │
             ▼
@@ -49,22 +55,22 @@
 |        HAProxy        | (VIP: 172.16.20.25)
 +-----------+-----------+
             │
-            ├─ [ Git / Nexus ]
+            ├─ [ GitLab / Nexus ]
             ├─ [ K8s Cluster ]
             └─ [ Vault / Monitoring ]
 ```
 
 **CI/CD 파이프라인 흐름**
-- 인프라 CI (외부 VM): Gitea + act_runner (Terraform/Ansible 자동화, Nexus 패키지 미러링)
-- 앱 CI/CD (K8s 내부): GitLab + ArgoCD (서비스 빌드·테스트·K8s 자동 배포)
+- 인프라 CI/CD (외부 VM): GitLab + GitLab Runner (Terraform/Ansible 자동화, Nexus 패키지 미러링, 승인 게이트)
+- 앱 CI/CD (K8s 내부): GitLab + GitLab Runner + ArgoCD (서비스 빌드·테스트·K8s 자동 배포)
 
 ```text
-  [인프라 CI]                          [앱 CI/CD]
-  Gitea (VM .55)                       GitLab (K8s 내부)
+  [인프라 CI/CD]                         [앱 CI/CD]
+  GitLab (VM .55)                      GitLab (K8s 내부)
       │ trigger                             │ trigger
       ▼                                     ▼
-  act_runner  ──► Terraform/Ansible     act_runner ──► build/test
-  (VM .55)    ──► Nexus 미러링                        ──► image push → Nexus
+  GitLab Runner ──► Terraform/Ansible   GitLab Runner ──► build/test
+  (VM .55)      ──► Nexus 미러링        (K8s executor) ──► image push → Nexus
                                              │
                                         ArgoCD (K8s 내부)
                                              │ watch manifest
@@ -77,7 +83,7 @@
 
 **운영 및 자동화 전략**
 - 수동 설치: 구조 변화가 적고 GUI 설정이 유리한 도구 (ex. pfSense)
-- 자동화: 설정이 잦고 스케일링이 필요한 서비스 (ex. K8s, IaC)
+- 자동화: 설정이 잦고 스케일링이 필요한 서비스 (ex. K8s)
 
 **네트워크 및 보안**
 - 보안 컴플라이언스 준수를 위한 물리/논리적 망 분리 (VLAN 20/30)
@@ -114,7 +120,8 @@
 6. Monitor: PLG 스택, Keepalived VIP (promtail 로그 수집)
 7. Vault: HashiCorp Vault HA (서비스 시크릿 관리)
 8. HAProxy: L4 로드밸런서, Keepalived VIP
-9. Nexus: apt mirror, raw binary, docker registry (패키지 미러링)
+9. AWS EC2: Nginx 리버스 프록시, WireGuard 터널 연결 (pfSense, 포폴 외부 노출)
+10. Nexus: apt mirror, raw binary, docker registry (패키지 미러링)
 
 ### 폐쇄망 전환
 Nexus 미러링 완료 후 pfSense VLAN 30 룰 변경
@@ -124,7 +131,6 @@ Nexus 미러링 완료 후 pfSense VLAN 30 룰 변경
 ### 폐쇄망 단계
 Nexus 내부 미러에서 패키지 및 바이너리 설치
 
-10. K8s
-11. CICD: Gitea + act_runner (Terraform/Ansible 자동화, Nexus 미러링)
-12. 웹앱 서비스 CI/CD (K8s 내부): GitLab + ArgoCD
-13. DB
+11. K8s
+12. 인프라 CI/CD (승인 게이트)
+13. 웹앱 서비스 CI/CD (K8s 내부)
