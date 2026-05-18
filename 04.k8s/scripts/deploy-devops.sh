@@ -23,10 +23,7 @@ if [[ "$ACTION" != "install" && "$ACTION" != "uninstall" ]]; then
   exit 1
 fi
 
-DEVOPS_NAMESPACE="devops"
-DATABASE_NAMESPACE="database"
-GITEA_NAMESPACE="gitea"
-GITLAB_OPERATOR_NAMESPACE="gitlab-system"
+# Namespaces are now derived from the component name.
 
 create_namespace() {
   local namespace=$1
@@ -59,53 +56,32 @@ install_helm_chart() {
   fi
   
   helm dependency update "$chart_dir" || true
-  
+
   if [ -f "$values_file" ]; then
-    helm $ACTION $name "$chart_dir" \
+    helm upgrade --install "$name" "$chart_dir" \
       --namespace "$namespace" \
+      --create-namespace \
       -f "$values_file" \
       --reset-values \
       --timeout 600s
   else
-    helm $ACTION $name "$chart_dir" \
+    helm upgrade --install "$name" "$chart_dir" \
       --namespace "$namespace" \
+      --create-namespace \
       --reset-values \
       --timeout 600s
   fi
 }
 
-install_gitlab_operator() {
-  local operator_dir="${MANIFESTS_DIR}/gitlab-operator"
-  local gitlab_cr="${operator_dir}/gitlab.yaml"
-  local version="${GL_OPERATOR_VERSION:-2.9.0}"
-  local platform="${GL_OPERATOR_PLATFORM:-kubernetes}"
-  local manifest_url="https://gitlab.com/api/v4/projects/18899486/packages/generic/gitlab-operator/${version}/gitlab-operator-${platform}-${version}.yaml"
+uninstall_helm_chart() {
+  local name=$1
+  local namespace=$2
 
-  create_namespace "${GITLAB_OPERATOR_NAMESPACE}"
-  echo "[$(date '+%F %T')] Installing gitlab-operator (${version}/${platform})..."
-  kubectl apply -f "${manifest_url}"
-
-  if [ -f "${gitlab_cr}" ]; then
-    echo "[$(date '+%F %T')] Applying GitLab CR: ${gitlab_cr}"
-    kubectl -n "${GITLAB_OPERATOR_NAMESPACE}" apply -f "${gitlab_cr}"
-  fi
+  echo "[$(date '+%F %T')] Uninstalling $name from namespace $namespace..."
+  helm uninstall "$name" --namespace "$namespace" --timeout 600s || true
 }
 
-uninstall_gitlab_operator() {
-  local operator_dir="${MANIFESTS_DIR}/gitlab-operator"
-  local gitlab_cr="${operator_dir}/gitlab.yaml"
-  local version="${GL_OPERATOR_VERSION:-2.9.0}"
-  local platform="${GL_OPERATOR_PLATFORM:-kubernetes}"
-  local manifest_url="https://gitlab.com/api/v4/projects/18899486/packages/generic/gitlab-operator/${version}/gitlab-operator-${platform}-${version}.yaml"
 
-  if [ -f "${gitlab_cr}" ]; then
-    kubectl -n "${GITLAB_OPERATOR_NAMESPACE}" delete -f "${gitlab_cr}" --ignore-not-found=true
-  fi
-  kubectl delete -f "${manifest_url}" --ignore-not-found=true
-}
-
-create_namespace "$DEVOPS_NAMESPACE"
-create_namespace "$GITEA_NAMESPACE"
 
 if [ -n "$COMPONENT" ]; then
   case $COMPONENT in
@@ -118,14 +94,28 @@ if [ -n "$COMPONENT" ]; then
       exit 1
       ;;
     harbor)
-      install_helm_chart harbor "${MANIFESTS_DIR}/harbor" "$DEVOPS_NAMESPACE"
+      if [[ "$ACTION" == "install" ]]; then
+        create_namespace "harbor"
+        install_helm_chart harbor "${MANIFESTS_DIR}/harbor" "harbor"
+      else
+        uninstall_helm_chart harbor "harbor"
+      fi
       ;;
     percona-db)
-      create_namespace "$DATABASE_NAMESPACE"
-      install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db" "$DATABASE_NAMESPACE"
+      if [[ "$ACTION" == "install" ]]; then
+        create_namespace "percona-db"
+        install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db" "percona-db"
+      else
+        uninstall_helm_chart percona-db "percona-db"
+      fi
       ;;
     gitea)
-      install_helm_chart gitea "${MANIFESTS_DIR}/gitea" "$GITEA_NAMESPACE"
+      if [[ "$ACTION" == "install" ]]; then
+        create_namespace "gitea"
+        install_helm_chart gitea "${MANIFESTS_DIR}/gitea" "gitea"
+      else
+        uninstall_helm_chart gitea "gitea"
+      fi
       ;;
     gitlab-operator)
       if [[ "$ACTION" == "install" ]]; then
@@ -135,7 +125,12 @@ if [ -n "$COMPONENT" ]; then
       fi
       ;;
     argocd)
-      install_helm_chart argocd "${MANIFESTS_DIR}/argocd" "$DEVOPS_NAMESPACE"
+      if [[ "$ACTION" == "install" ]]; then
+        create_namespace "argocd"
+        install_helm_chart argocd "${MANIFESTS_DIR}/argocd" "argocd"
+      else
+        uninstall_helm_chart argocd "argocd"
+      fi
       ;;
     *)
       echo "ERROR: Unknown component: $COMPONENT"
@@ -143,13 +138,22 @@ if [ -n "$COMPONENT" ]; then
       ;;
   esac
 else
-  create_namespace "$DATABASE_NAMESPACE"
-  create_namespace "$GITEA_NAMESPACE"
-  install_helm_chart harbor "${MANIFESTS_DIR}/harbor" "$DEVOPS_NAMESPACE"
-  install_helm_chart gitea "${MANIFESTS_DIR}/gitea" "$GITEA_NAMESPACE"
-  install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db" "$DATABASE_NAMESPACE"
-  install_helm_chart argocd "${MANIFESTS_DIR}/argocd" "$DEVOPS_NAMESPACE"
-  echo "[$(date '+%F %T')] NOTE: gitlab-operator is optional. Run '$0 install gitlab-operator' after setting GL_OPERATOR_VERSION/GL_OPERATOR_PLATFORM."
+  if [[ "$ACTION" == "install" ]]; then
+    create_namespace "harbor"
+    create_namespace "gitea"
+    create_namespace "percona-db"
+    create_namespace "argocd"
+    install_helm_chart harbor "${MANIFESTS_DIR}/harbor" "harbor"
+    install_helm_chart gitea "${MANIFESTS_DIR}/gitea" "gitea"
+    install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db" "percona-db"
+    install_helm_chart argocd "${MANIFESTS_DIR}/argocd" "argocd"
+    echo "[$(date '+%F %T')] NOTE: gitlab-operator is optional. Run '$0 install gitlab-operator' after setting GL_OPERATOR_VERSION/GL_OPERATOR_PLATFORM."
+  else
+    uninstall_helm_chart harbor "harbor"
+    uninstall_helm_chart gitea "gitea"
+    uninstall_helm_chart percona-db "percona-db"
+    uninstall_helm_chart argocd "argocd"
+  fi
 fi
 
 echo "[$(date '+%F %T')] done"

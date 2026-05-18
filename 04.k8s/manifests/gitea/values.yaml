@@ -1,0 +1,49 @@
+gitea:
+  gitea:
+    admin:
+      username: "kosa"
+      password: "kosa1004"
+      email: "admin@example.com"
+    config:
+      APP_NAME: "Gitea (DevOps)"
+      server:
+        SSH_LISTEN_PORT: 2222
+        SSH_PORT: 2222
+        HTTP_PORT: 3000
+
+  persistence:
+    enabled: true
+    storageClass: "rbd-storage"
+    size: 20Gi
+
+  # Use non-HA dependencies to save resources
+  postgresql-ha:
+    enabled: false
+  postgresql:
+    enabled: true
+    global:
+      storageClass: "rbd-storage"
+    primary:
+      persistence:
+        storageClass: "rbd-storage"
+        size: 20Gi
+
+  valkey-cluster:
+    enabled: false
+  valkey:
+    enabled: true
+    architecture: standalone
+    global:
+      storageClass: "rbd-storage"
+    master:
+      persistence:
+        storageClass: "rbd-storage"
+        size: 5Gi
+
+  service:
+    http:
+      type: LoadBalancer
+      port: 3000
+    ssh:
+      type: LoadBalancer
+      port: 2222
