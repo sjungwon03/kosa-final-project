@@ -12,7 +12,7 @@ vrrp_instance VI_1 {
     advert_int 1
     authentication {
         auth_type PASS
-        auth_pass {{ keepalived_auth_pass }}  # TODO: group_vars/loadbalancers.yml에서 keepalived_auth_pass 설정 필요
+        auth_pass {{ keepalived_auth_pass }}
     }
     virtual_ipaddress {
         {{ keepalived_vip }}
