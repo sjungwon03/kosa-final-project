@@ -1,0 +1,4 @@
+---
+grafana_admin_password: "kosa1234"
+prometheus_retention: "15d"
+loki_retention: "720h"
