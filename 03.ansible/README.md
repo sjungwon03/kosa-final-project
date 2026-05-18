@@ -166,8 +166,8 @@ etcd --version
 - 로컬 `02.terraform` 및 `03.ansible/workspace` 내부 설정 완료
 
 ### 실행
-- 배포 시 컨트롤 노드의 `~/workspace/` 전체를 삭제 후 재생성함
-- `credentials.auto.tfvars` 등 컨트롤 노드에서 생성한 파일은 백업 필요
+- 배포 시 `~/workspace/`는 유지하고 증분 동기화함
+- Terraform state 파일(`terraform.tfstate*`)은 동기화에서 제외되어 보존됨
 
 ```bash
 # SSH 연결 시 비밀번호 1회 입력 필요
@@ -176,7 +176,7 @@ bash 03.ansible/03-deploy-to-control.sh
 
 ### 동작 순서
 
-1. 기존 컨트롤 노드의 디렉토리 초기화
+1. 컨트롤 노드 `~/workspace/` 디렉토리 확인
 2. `02.terraform/*` → 컨트롤 노드 `~/workspace/terraform/` 복사
 3. `03.ansible/workspace/*` → 컨트롤 노드 `~/workspace/ansible/` 복사
 4. 쉘 스크립트 실행 권한 부여
@@ -225,10 +225,16 @@ rm -rf .terraform/ .terraform.lock.hcl
 
 ```bash
 # DNS 구성
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook -i ~/workspace/ansible/inventories/prod/hosts ~/workspace/ansible/playbooks/dns.yml
+ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg \
+  ansible-playbook \
+  -i ~/workspace/ansible/inventories/prod/hosts \
+  ~/workspace/ansible/playbooks/dns.yml
 
 # 전체 구성
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook -i ~/workspace/ansible/inventories/prod/hosts ~/workspace/ansible/playbooks/site.yml
+ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg \
+  ansible-playbook \
+  -i ~/workspace/ansible/inventories/prod/hosts \
+  ~/workspace/ansible/playbooks/site.yml
 
 # 캐싱 제거
 rm -rf ~/.ansible/cp/*
@@ -236,15 +242,14 @@ rm -rf ~/.ansible/cp/*
 
 ---
 
-
 ## 인프라 구성 명세
 
 ### 수동 구성
 
 | 호스트 | VM ID | VM name | IP | DNS | 주요 스택 |
 |---|---|---|---|---|---|
-| kosa21 | 2002 | pfSense  | 172.16.20.5  | firewall.edge.local | 방화벽, NAT, WireGuard VPN |
-| kosa21 | 2210 | Control  | 172.16.30.7  | ctrl.mgmt.local | Terraform, Ansible, etcd |
+| kosa21 | 2105 | pfSense  | 172.16.20.5  | firewall.edge.local | 방화벽, NAT, WireGuard VPN |
+| kosa21 | 2207 | Control  | 172.16.30.7  | ctrl.mgmt.local | Terraform, Ansible, etcd |
 | kosa24 | 2475 | Test/Sec | 172.16.30.75 | stress.mgmt.local | Kali Linux (k6, Locust 등) |
 
 
@@ -255,10 +260,11 @@ rm -rf ~/.ansible/cp/*
 | - | - | DNS VIP | 172.16.30.10 | dns.svc.local    | Keepalived Float IP | - |
 | kosa22 | 2211 | dns-01      | 172.16.30.11 | dns-01.svc.local | Keepalived, CoreDNS, etcd | rbd-storage |
 | kosa23 | 2312 | dns-02      | 172.16.30.12 | dns-02.svc.local | Keepalived, CoreDNS, etcd | rbd-storage |
-| kosa24 | 2415 | nexus-01    | 172.16.30.15 | nexus.mgmt.local | Nexus (apt mirror, binary, docker registry) | rbd-storage |
+| kosa24 | 2415 | nexus-01    | 172.16.30.15 | nexus.mgmt.local | Nexus (apt mirror, binary) | rbd-storage |
 | - | - | Vault VIP | 172.16.30.20 | vault.sec.local | Keepalived Float IP | - |
 | kosa21 | 2121 | vault-01    | 172.16.30.21 | vault-01.sec.local | HashiCorp Vault/PKI, Raft | rbd-storage |
 | kosa24 | 2422 | vault-02    | 172.16.30.22 | vault-02.sec.local | HashiCorp Vault/PKI, Raft | rbd-storage |
+| kosa23 | 2323 | vault-03    | 172.16.30.23 | vault-03.sec.local | HashiCorp Vault/PKI, Raft | rbd-storage |
 | - | - | Haproxy VIP | 172.16.20.25 | haproxy.svc.local | Keepalived | - |
 | kosa22 | 2226 | haproxy-01  | 172.16.20.26 | haproxy-01.svc.local | Keepalived, HAProxy | rbd-storage |
 | kosa23 | 2327 | haproxy-02  | 172.16.20.27 | haproxy-02.svc.local | Keepalived, HAProxy | rbd-storage |
@@ -270,7 +276,7 @@ rm -rf ~/.ansible/cp/*
 | kosa21 | 2145 | k8s-worker-01   | 172.16.30.45 | node-01.k8s.local | kubelet | rbd-storage |
 | kosa22 | 2246 | k8s-worker-02   | 172.16.30.46 | node-02.k8s.local | kubelet | rbd-storage |
 | kosa23 | 2347 | k8s-worker-03   | 172.16.30.47 | node-03.k8s.local | kubelet | rbd-storage |
-| kosa24 | 2455 | cicd-01         | 172.16.30.55 | gitea.mgmt.local | Gitea | rbd-storage |
+| kosa24 | 2455 | cicd-01         | 172.16.30.55 | cicd.mgmt.local | GitLab, GitLab Runner | rbd-storage |
 | kosa24 | 2470 | minio-01        | 172.16.30.70 | minio.mgmt.local | MinIO (Terraform Backend) | rbd-storage |
 | kosa22 | 2290 | siem-01         | 172.16.30.85 | siem.mgmt.local | Wazuh | rbd-storage |
 | - | - | PLG VIP     | 172.16.30.90 | - | - | - |
@@ -289,12 +295,11 @@ rm -rf ~/.ansible/cp/*
 
 | 호스트 | VM ID | VM name | IP | DNS 알리아스 | 주요 스택 | 스토리지 |
 |---|---|---|---|---|---|---|
-| kosa21 | 21200 | test-k8s-master-01 | 172.16.30.200 | test-master-01.k8s.local | test 마스터 노드 | **local-lvm** |
-| kosa23 | 23201 | test-k8s-master-02 | 172.16.30.201 | test-master-02.k8s.local | test 마스터 노드 | **local-lvm** |
-| kosa22 | 22205 | test-k8s-platform-01 | 172.16.30.205 | test-node-plat.k8s.local | test 플랫폼 워커 | rbd-storage |
-| kosa22 | 22207 | test-k8s-worker-01 | 172.16.30.207 | test-node-01.k8s.local | test 워커 노드 | rbd-storage |
-| kosa24 | 24209 | test-k8s-worker-02 | 172.16.30.209 | test-node-02.k8s.local | test 워커 노드 | rbd-storage |
-| kosa21 | 21210 | test-dns-01 | 172.16.30.210 | test-dns-01.svc.local | test DNS 서버 | rbd-storage |
-| kosa23 | 23211 | test-dns-02 | 172.16.30.211 | test-dns-02.svc.local | test DNS 서버 | rbd-storage |
-| kosa24 | 24215 | test-vault-01 | 172.16.30.215 | test-vault-01.sec.local | test 보안 서버 | rbd-storage |
+| kosa21 | 12130 | k8s-master-01 | 172.16.30.130 | test-master-01.k8s.local | test 마스터 노드 | **local-lvm** |
+| kosa22 | 12231 | k8s-master-02 | 172.16.30.131 | test-master-02.k8s.local | test 마스터 노드 | **local-lvm** |
+| kosa24 | 12440 | k8s-worker-plat | 172.16.30.140 | test-node-plat.k8s.local | test 플랫폼 워커 | rbd-storage |
+| kosa21 | 12141 | k8s-worker-01 | 172.16.30.141 | test-node-01.k8s.local | test 워커 노드 | rbd-storage |
+| kosa22 | 12242 | k8s-worker-02 | 172.16.30.142 | test-node-02.k8s.local | test 워커 노드 | rbd-storage |
+| kosa22 | 12211 | dns1 | 172.16.30.111 | test-dns-01.svc.local | test DNS 서버 | rbd-storage |
+| kosa21 | 12115 | vault1 | 172.16.30.121 | test-vault-01.sec.local | test 보안 서버 | rbd-storage |
 
