@@ -276,11 +276,11 @@ rm -rf ~/.ansible/cp/*
 | kosa21 | 2145 | k8s-worker-01   | 172.16.30.45 | node-01.k8s.local | kubelet | rbd-storage |
 | kosa22 | 2246 | k8s-worker-02   | 172.16.30.46 | node-02.k8s.local | kubelet | rbd-storage |
 | kosa23 | 2347 | k8s-worker-03   | 172.16.30.47 | node-03.k8s.local | kubelet | rbd-storage |
-| kosa24 | 2455 | cicd-01         | 172.16.30.55 | cicd.mgmt.local | GitLab, GitLab Runner | rbd-storage |
+| kosa23 | 2355 | cicd-01         | 172.16.30.55 | cicd.mgmt.local | GitLab, GitLab Runner | rbd-storage |
 | kosa24 | 2470 | minio-01        | 172.16.30.70 | minio.mgmt.local | MinIO (Terraform Backend) | rbd-storage |
 | kosa22 | 2290 | siem-01         | 172.16.30.85 | siem.mgmt.local | Wazuh | rbd-storage |
 | - | - | PLG VIP     | 172.16.30.90 | - | - | - |
-| kosa23 | 2396 | monitor-01      | 172.16.30.91 | monitor.mgmt.local | PLG Stack | rbd-storage |
+| kosa21 | 2196 | monitor-01      | 172.16.30.91 | monitor.mgmt.local | PLG Stack | rbd-storage |
 
 **VIP 리스트**
 | 서비스 | VIP | DNS 알리아스 | 비고 |
