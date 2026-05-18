@@ -1,0 +1,98 @@
+---
+# minio: Terraform Backend용 S3 오브젝트 스토리지
+# TODO: 폐쇄망 전환 전 바이너리 사전 배포 필요 (roles/minio/files/minio, mc)
+
+- name: minio 유저 생성
+  user:
+    name: "{{ minio_user }}"
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+
+- name: minio 데이터 디렉토리 생성
+  file:
+    path: "{{ minio_data_dir }}"
+    state: directory
+    owner: "{{ minio_user }}"
+    group: "{{ minio_user }}"
+    mode: '0750'
+
+- name: minio 바이너리 다운로드
+  get_url:
+    url: "{{ minio_binary_url }}"
+    dest: /usr/local/bin/minio
+    mode: '0755'
+  notify: restart minio
+
+- name: mc 클라이언트 다운로드
+  get_url:
+    url: "{{ minio_mc_url }}"
+    dest: /usr/local/bin/mc
+    mode: '0755'
+
+- name: minio 환경 변수 파일 배포
+  copy:
+    dest: /etc/default/minio
+    content: |
+      MINIO_ROOT_USER={{ minio_root_user }}
+      MINIO_ROOT_PASSWORD={{ minio_root_password }}
+      MINIO_VOLUMES={{ minio_data_dir }}
+      MINIO_OPTS="--address :{{ minio_port }} --console-address :{{ minio_console_port }}"
+    owner: "{{ minio_user }}"
+    group: "{{ minio_user }}"
+    mode: '0640'
+  notify: restart minio
+
+- name: minio systemd 유닛 배포
+  copy:
+    dest: /etc/systemd/system/minio.service
+    content: |
+      [Unit]
+      Description=MinIO Object Storage
+      After=network.target
+
+      [Service]
+      User={{ minio_user }}
+      Group={{ minio_user }}
+      EnvironmentFile=/etc/default/minio
+      ExecStart=/usr/local/bin/minio server $MINIO_OPTS $MINIO_VOLUMES
+      Restart=always
+      RestartSec=5s
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  notify: restart minio
+
+- name: minio 활성화 및 시작
+  systemd:
+    name: minio
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: 핸들러 즉시 실행 (자격증명 변경 시 재시작 보장)
+  meta: flush_handlers
+
+- name: minio 포트 기동 대기
+  wait_for:
+    host: 127.0.0.1
+    port: "{{ minio_port }}"
+    timeout: 30
+
+- name: mc alias 등록
+  command: >
+    mc alias set local http://127.0.0.1:{{ minio_port }}
+    {{ minio_root_user }} {{ minio_root_password }}
+  changed_when: false
+
+- name: 버킷 존재 여부 확인
+  command: mc ls local/{{ minio_default_bucket }}
+  register: bucket_check
+  failed_when: false
+  changed_when: false
+
+- name: terraform-state 버킷 생성
+  command: mc mb local/{{ minio_default_bucket }}
+  when: bucket_check.rc != 0

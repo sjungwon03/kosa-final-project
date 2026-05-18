@@ -1,0 +1,18 @@
+---
+minio_version: "RELEASE.2024-01-16T16-07-38Z"
+minio_user: minio
+minio_data_dir: /data/minio
+minio_port: 9000
+minio_console_port: 9001
+minio_domain: "minio.mgmt.local"
+
+# TODO: Vault 연동으로 주입 예정 (현재 평문)
+minio_root_user: "kosa"
+minio_root_password: "kosa1004"
+
+# Terraform backend용 버킷
+minio_default_bucket: "terraform-state"
+
+# TODO: 폐쇄망 — 바이너리 인터넷 머신에서 다운로드 후 roles/minio/files/minio에 저장
+minio_binary_url: "https://dl.min.io/server/minio/release/linux-amd64/archive/minio.{{ minio_version }}"
+minio_mc_url: "https://dl.min.io/client/mc/release/linux-amd64/mc"
