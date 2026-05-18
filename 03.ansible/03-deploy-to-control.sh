@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # 컨트롤 노드 배포 스크립트
-# 기존 terraform/ansible 제거 후 ~/workspace/{terraform,ansible} 구조로 재배포
 #
 # [2026-05-13] 최초 작성
+# [2026-05-16] scp -> rsync 변경 (숨김 파일 누락 방지 및 전송 속도 최적화)
+# [2026-05-18] ~/workspace/{terraform,ansible} 구조로 증분 동기화 (terraform state 보존)
 #
 # 실행: 로컬(노트북)에서 실행
 # 사용법: bash 03.ansible/03-deploy-to-control.sh
@@ -23,17 +24,39 @@ SSH_OPTS="-o ControlMaster=auto -o ControlPath=${CONTROL_SOCKET} -o ControlPersi
 echo "[0/4] SSH 연결 초기화 (비밀번호 1회 입력)..."
 ssh $SSH_OPTS "$CONTROL_HOST" "echo connected"
 
-echo "[1/4] 컨트롤 노드 기존 디렉토리 제거 및 구조 생성..."
+echo "[1/4] 컨트롤 노드 디렉토리 구조 확인..."
 ssh $SSH_OPTS "$CONTROL_HOST" "
-  rm -rf ~/terraform ~/ansible ~/workspace
   mkdir -p ${REMOTE_WORKSPACE}/terraform ${REMOTE_WORKSPACE}/ansible
 "
 
-echo "[2/4] Terraform 파일 전송..."
-scp -o ControlPath="${CONTROL_SOCKET}" -r "${PROJECT_ROOT}/02.terraform/"* "${CONTROL_HOST}:${REMOTE_WORKSPACE}/terraform/"
+echo "[2/4] Terraform 파일 동기화 (state 및 중요 자산 보존)..."
+# --delete 옵션을 적용하되 원격지의 state 파일, 로그 및 키 파일이 유실되는 대참사를 방지하기 위해 정교하게 exclude 처리
+rsync -avz --delete \
+  -e "ssh -o ControlPath=${CONTROL_SOCKET}" \
+  --exclude=".git/" \
+  --exclude=".terraform/" \
+  --exclude=".terraform.lock.hcl" \
+  --exclude="**/.terraform/" \
+  --exclude="**/.terraform.lock.hcl" \
+  --exclude="**/terraform.tfstate" \
+  --exclude="**/terraform.tfstate.*" \
+  --exclude="**/*.tfstate" \
+  --exclude="**/*.tfstate.*" \
+  --exclude="**/*.log" \
+  --exclude="**/*.key" \
+  --exclude="**/*.pub" \
+  "${PROJECT_ROOT}/02.terraform/" "${CONTROL_HOST}:${REMOTE_WORKSPACE}/terraform/"
 
-echo "[3/4] Ansible 파일 전송..."
-scp -o ControlPath="${CONTROL_SOCKET}" -r "${SCRIPT_DIR}/workspace/"* "${CONTROL_HOST}:${REMOTE_WORKSPACE}/ansible/"
+echo "[3/4] Ansible 파일 동기화 (원격 자산 보호)..."
+# --delete 옵션을 적용하되 원격에 축적되는 플레이북 실행 로그(*.log) 및 개별 키 파일 등을 안전하게 배제
+rsync -avz --delete \
+  -e "ssh -o ControlPath=${CONTROL_SOCKET}" \
+  --exclude=".git/" \
+  --exclude="**/*.log" \
+  --exclude="**/*.key" \
+  --exclude="**/*.pub" \
+  --exclude="**/keys/" \
+  "${SCRIPT_DIR}/workspace/" "${CONTROL_HOST}:${REMOTE_WORKSPACE}/ansible/"
 
 echo "[4/4] 실행 권한 부여..."
 ssh $SSH_OPTS "$CONTROL_HOST" "chmod +x ${REMOTE_WORKSPACE}/terraform/02-run.sh"
