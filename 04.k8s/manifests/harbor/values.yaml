@@ -9,6 +9,18 @@ expose:
 
 externalURL: http://harbor.mgmt.local
 
+internalTLS:
+  enabled: false
+
+ipFamily:
+  ipv4:
+    enabled: true
+  ipv6:
+    enabled: false
+  policy: SingleStack
+  families:
+    - IPv4
+
 harborAdminPassword: "kosa1004"
 persistence:
   enabled: true
