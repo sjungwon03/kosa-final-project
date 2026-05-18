@@ -1,2 +1,35 @@
 ansible_user: kosa
 ansible_ssh_private_key_file: ~/.ssh/ansible
+
+# Ceph CSI (RBD) StorageClass
+ceph_storage_enabled: true
+ceph_rbd_storageclass_name: rbd-storage
+ceph_rbd_cluster_id: "861f6095-c334-413a-95a0-04e197f430c2"
+ceph_rbd_pool: "rbd-team4"
+ceph_csi_secret_namespace: "kube-system"
+ceph_csi_secret_name: "ceph-csi-rbd-secret"
+ceph_csi_user_id: "team4-k8s-csi"
+ceph_csi_user_key: "AQCdgwlqMDIwKRAAO1t079BPaR/p+l7Xb9SuYw=="
+ceph_csi_enabled: true
+ceph_csi_release_name: ceph-csi-rbd
+ceph_csi_namespace: kube-system
+ceph_csi_chart_version: "3.13.0"
+ceph_helm_bin: /usr/local/bin/helm
+ceph_csi_monitors:
+  - "10.10.10.11:6789"
+  - "10.10.10.12:6789"
+  - "10.10.10.13:6789"
+  - "10.10.10.14:6789"
+  - "10.10.10.15:6789"
+  - "10.10.10.16:6789"
+
+# MetalLB
+metallb_manifest_url: "https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml"
+metallb_enabled: true
+metallb_address_pools:
+  - "172.16.30.200-172.16.30.249"
+metallb_namespace: metallb-system
+metallb_ipaddresspool_name: primary-pool
+metallb_l2advertisement_name: primary-l2adv
+metallb_auto_assign: true
+metallb_avoid_buggy_ips: true
