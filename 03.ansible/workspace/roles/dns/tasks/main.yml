@@ -22,7 +22,10 @@
 # ── 2. etcd 바이너리 다운로드 ─────────────────────────────────
 - name: etcd tarball 다운로드
   get_url:
-    url: "https://github.com/etcd-io/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+    url: >-
+      {{ binary_mirror_url ~ '/etcd-' ~ etcd_version ~ '-linux-amd64.tar.gz'
+         if binary_mirror_url
+         else 'https://github.com/etcd-io/etcd/releases/download/' ~ etcd_version ~ '/etcd-' ~ etcd_version ~ '-linux-amd64.tar.gz' }}
     dest: "/tmp/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
     mode: '0644'
 
@@ -64,7 +67,10 @@
 # ── 4. CoreDNS 바이너리 다운로드 ─────────────────────────────
 - name: CoreDNS tarball 다운로드
   get_url:
-    url: "https://github.com/coredns/coredns/releases/download/v{{ coredns_version }}/coredns_{{ coredns_version }}_linux_amd64.tgz"
+    url: >-
+      {{ binary_mirror_url ~ '/coredns_' ~ coredns_version ~ '_linux_amd64.tgz'
+         if binary_mirror_url
+         else 'https://github.com/coredns/coredns/releases/download/v' ~ coredns_version ~ '/coredns_' ~ coredns_version ~ '_linux_amd64.tgz' }}
     dest: "/tmp/coredns_{{ coredns_version }}_linux_amd64.tgz"
     mode: '0644'
 
@@ -82,6 +88,26 @@
     mode: '0755'
     remote_src: true
   notify: restart coredns
+
+# ── 4.5 systemd-resolved stub 비활성화 ───────────────────────
+# Ubuntu 기본 stub(127.0.0.53:53)이 CoreDNS 0.0.0.0:53 바인딩과 충돌
+- name: systemd-resolved conf.d 디렉토리 생성
+  file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+    mode: '0755'
+
+- name: systemd-resolved stub 리스너 비활성화
+  copy:
+    dest: /etc/systemd/resolved.conf.d/no-stub.conf
+    content: |
+      [Resolve]
+      DNSStubListener=no
+    mode: '0644'
+  notify: restart systemd-resolved
+
+- name: systemd-resolved 재시작 플러시 (CoreDNS 시작 전 포트 53 확보)
+  meta: flush_handlers
 
 # ── 5. CoreDNS 설정 ───────────────────────────────────────────
 - name: CoreDNS 설정 디렉토리 생성
@@ -126,7 +152,8 @@
   apt:
     name: keepalived
     state: present
-    update_cache: false
+    update_cache: true
+    cache_valid_time: 3600
 
 - name: 커널 비로컬 바인딩 허용 (VIP 바인딩용)
   sysctl:
@@ -152,7 +179,7 @@
 # 첫 번째 노드에서만 1회 실행
 - name: 기본 DNS 레코드 등록
   command: >
-    etcdctl put /coredns/{{ dns_domain | split('.') | reverse | join('/') }}/{{ item.name }}
+    etcdctl put /coredns/{{ (item.domain | default(dns_domain)) | split('.') | reverse | join('/') }}/{{ item.name }}
     '{"host":"{{ item.ip }}"}'
   environment:
     ETCDCTL_API: "3"
