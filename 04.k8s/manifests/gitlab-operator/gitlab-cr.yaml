@@ -1,0 +1,93 @@
+apiVersion: apps.gitlab.com/v1beta1
+kind: GitLab
+metadata:
+  name: gitlab
+  namespace: gitlab-system
+spec:
+  chart:
+    # GitLab Operator 2.9.0 기준 지원 chart 버전
+    version: "9.9.0"
+    values:
+      global:
+        hosts:
+          domain: mgmt.local
+          https: false
+          gitlab:
+            name: gitlab.mgmt.local
+        ingress:
+          enabled: false
+          configureCertmanager: false
+        storageClass: rbd-storage
+
+      gitlab:
+        webservice:
+          nodeSelector:
+            kubernetes.io/hostname: k8s-worker-plat
+          minReplicas: 1
+          maxReplicas: 1
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1.5Gi
+            limits:
+              cpu: 1000m
+              memory: 2.5Gi
+          service:
+            type: LoadBalancer
+            loadBalancerIP: "172.16.30.203"
+            loadBalancerSourceRanges:
+              - "172.16.0.0/16"
+              - "10.0.0.0/8"
+            annotations:
+              metallb.universe.tf/allow-shared-ip: gitlab-shared
+        gitaly:
+          nodeSelector:
+            kubernetes.io/hostname: k8s-worker-plat
+          persistence:
+            storageClass: rbd-storage
+            size: 50Gi
+          resources:
+            requests:
+              cpu: 300m
+              memory: 1Gi
+            limits:
+              cpu: 600m
+              memory: 2Gi
+        gitlab-shell:
+          nodeSelector:
+            kubernetes.io/hostname: k8s-worker-plat
+          service:
+            type: LoadBalancer
+            loadBalancerIP: "172.16.30.203"
+            loadBalancerSourceRanges:
+              - "172.16.0.0/16"
+              - "10.0.0.0/8"
+            annotations:
+              metallb.universe.tf/allow-shared-ip: gitlab-shared
+
+      # PostgreSQL — 내장 사용 (GitLab은 MySQL 미지원, Percona DB 연결 불가)
+      postgresql:
+        primary:
+          nodeSelector:
+            kubernetes.io/hostname: k8s-worker-plat
+          persistence:
+            storageClass: rbd-storage
+            size: 20Gi
+
+      # Redis — 내장 사용
+      redis:
+        master:
+          nodeSelector:
+            kubernetes.io/hostname: k8s-worker-plat
+
+      # 비활성화 (외부 서비스로 대체)
+      registry:
+        enabled: false          # Harbor 사용
+      gitlab-runner:
+        install: false          # 외부 Runner (cicd-01: 172.16.30.55)
+      certmanager:
+        install: false
+      nginx-ingress:
+        enabled: false
+      prometheus:
+        install: false
