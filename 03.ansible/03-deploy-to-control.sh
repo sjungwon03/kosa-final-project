@@ -5,6 +5,9 @@
 # [2026-05-13] 최초 작성
 # [2026-05-16] scp -> rsync 변경 (숨김 파일 누락 방지 및 전송 속도 최적화)
 # [2026-05-18] ~/workspace/{terraform,ansible} 구조로 증분 동기화 (terraform state 보존)
+# [2026-05-18] k8s 관련 tfvars/롤/플레이북 동기화 제외 (작업 보호), keys/ 제외 해제, credentials.auto.tfvars 보호 추가
+# [2026-05-18] terraform state MinIO 백엔드 이관 완료로 tfstate exclude 제거
+# [2026-05-18] .terraform.lock.hcl exclude 제거 (소스 파일로 동기화 대상에 포함)
 #
 # 실행: 로컬(노트북)에서 실행
 # 사용법: bash 03.ansible/03-deploy-to-control.sh
@@ -29,33 +32,35 @@ ssh $SSH_OPTS "$CONTROL_HOST" "
   mkdir -p ${REMOTE_WORKSPACE}/terraform ${REMOTE_WORKSPACE}/ansible
 "
 
-echo "[2/4] Terraform 파일 동기화 (state 및 중요 자산 보존)..."
-# --delete 옵션을 적용하되 원격지의 state 파일, 로그 및 키 파일이 유실되는 대참사를 방지하기 위해 정교하게 exclude 처리
+echo "[2/4] Terraform 파일 동기화 (중요 자산 보존)..."
+# --delete 옵션 적용 시 원격 credentials·로그·키 파일 유실 방지를 위해 exclude 처리
+# state는 MinIO 백엔드에서 관리하므로 tfstate exclude 불필요
+# k8s tfvars는 재배포 시 의도적 동기화 필요 — 일상 배포에서 실수로 덮어쓰지 않도록 제외
+# k8s 재설치 시: rsync -avz -e "ssh" --include="**/k8s*.tfvars" --exclude="*" 원격경로:로컬경로 로 단독 동기화
 rsync -avz --delete \
   -e "ssh -o ControlPath=${CONTROL_SOCKET}" \
   --exclude=".git/" \
   --exclude=".terraform/" \
-  --exclude=".terraform.lock.hcl" \
   --exclude="**/.terraform/" \
-  --exclude="**/.terraform.lock.hcl" \
-  --exclude="**/terraform.tfstate" \
-  --exclude="**/terraform.tfstate.*" \
-  --exclude="**/*.tfstate" \
-  --exclude="**/*.tfstate.*" \
+  --exclude="**/credentials.auto.tfvars" \
   --exclude="**/*.log" \
   --exclude="**/*.key" \
-  --exclude="**/*.pub" \
+  --exclude="**/k8s*.tfvars" \
   "${PROJECT_ROOT}/02.terraform/" "${CONTROL_HOST}:${REMOTE_WORKSPACE}/terraform/"
 
 echo "[3/4] Ansible 파일 동기화 (원격 자산 보호)..."
-# --delete 옵션을 적용하되 원격에 축적되는 플레이북 실행 로그(*.log) 및 개별 키 파일 등을 안전하게 배제
+# --delete 옵션 적용 시 원격 로그·키 파일 보호
+# k8s 롤·플레이북은 재배포 시 의도적 동기화 필요 — 일상 배포에서 실수로 덮어쓰지 않도록 제외
+# k8s 재설치 시: rsync -avz -e "ssh" --include="playbooks/k8s.yml" --include="roles/k8s*/" --exclude="*" 로컬경로 원격경로 로 단독 동기화
 rsync -avz --delete \
   -e "ssh -o ControlPath=${CONTROL_SOCKET}" \
   --exclude=".git/" \
   --exclude="**/*.log" \
   --exclude="**/*.key" \
-  --exclude="**/*.pub" \
-  --exclude="**/keys/" \
+  --exclude="playbooks/k8s.yml" \
+  --exclude="roles/k8s_common/" \
+  --exclude="roles/k8s_master/" \
+  --exclude="roles/k8s_worker/" \
   "${SCRIPT_DIR}/workspace/" "${CONTROL_HOST}:${REMOTE_WORKSPACE}/ansible/"
 
 echo "[4/4] 실행 권한 부여..."
