@@ -5,6 +5,10 @@
 - [Terraform](#terraform)
 - [Ansible](#ansible)
 
+> 폐쇄망 전환 전 Nexus 준비 체크리스트는 `03-1.nexus/README.md` 참조
+
+---
+
 ## Terraform
 
 ### 운영 환경 (prod)
@@ -62,6 +66,24 @@ qm destroy 2211 --purge
 rm -f /etc/pve/nodes/*/qemu-server/2211.conf
 ```
 
+**방법 3: Proxmox 노드 자체가 다운된 경우 (HTTP 595 / No route to host)**
+`terraform destroy` 시 특정 노드에서 `No route to host` 에러 발생 → 노드 복구 전까지 Terraform 상태에서 제거 후 수동 정리
+
+```bash
+# 1. Terraform 환경 디렉터리로 이동 (반드시 env 하위에서 실행)
+cd ~/workspace/terraform/env/prod   # 또는 env/test
+
+# 2. 상태에서 해당 VM 제거 (Terraform이 더 이상 관리하지 않음)
+terraform state rm 'module.vms.proxmox_virtual_environment_vm.ubuntu["<VM명>"]'
+# 예: terraform state rm 'module.vms.proxmox_virtual_environment_vm.ubuntu["k8s-master-02"]'
+
+# 3. 노드 복구 후 실제 VM 강제 삭제
+bash ~/workspace/terraform/02-force-destroy-all.sh kosa23
+# 특정 VM만: bash ~/workspace/terraform/02-force-destroy-all.sh kosa23 2232
+```
+
+> 현재 상태 목록 확인: `terraform state list`
+
 ---
 
 ## Ansible
@@ -81,36 +103,17 @@ ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook -i ~/workspace/a
 ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook -i ~/workspace/ansible/inventories/prod/hosts ~/workspace/ansible/playbooks/minio.yml
 ```
 
-### DB 클러스터 초기 구축
 
-> **주의**: PXC는 반드시 아래 순서를 지켜야 함. 순서 틀리면 클러스터 broken 상태 발생
+// 적절한 위치에 삽입
 
-```bash
-# 1단계: 첫 번째 노드만 bootstrap 모드로 시작
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook \
-  -i ~/workspace/ansible/inventories/prod/hosts \
-  ~/workspace/ansible/playbooks/db.yml \
-  --limit 172.16.30.65 -e pxc_bootstrap=true
+# 전체 서버 promtail/wazuh-agent 상태 일괄 확인
+ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg \
+  ansible -i ~/workspace/ansible/inventories/prod/hosts \
+  all -m shell -a "systemctl is-active promtail wazuh-agent prometheus-node-exporter" \
+  --become
 
-# 2단계: 나머지 노드 조인 (첫 번째 노드가 running 상태일 때 실행)
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook \
-  -i ~/workspace/ansible/inventories/prod/hosts \
-  ~/workspace/ansible/playbooks/db.yml \
-  --limit 172.16.30.66,172.16.30.67
 
-# 3단계: 부트스트랩 노드를 일반 모드로 재시작 (bootstrap.service → mysql)
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook \
-  -i ~/workspace/ansible/inventories/prod/hosts \
-  ~/workspace/ansible/playbooks/db.yml \
-  --limit 172.16.30.65
-
-# 4단계: ProxySQL 설치 (db_nodes 클러스터 정상 확인 후)
-# ProxySQL 백엔드 등록은 최초 1회 수동 설정 필요 (OPERATIONS.md 참조)
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook \
-  -i ~/workspace/ansible/inventories/prod/hosts \
-  ~/workspace/ansible/playbooks/db.yml \
-  --limit proxysql
-```
+  
 
 ### 운영 및 변경 (Operation)
 구축 완료 후 설정 변경 또는 패치 적용
