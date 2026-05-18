@@ -1,1 +1,68 @@
 ---
+# vault: HashiCorp Vault HA (Raft 스토리지)
+# TODO: 폐쇄망 적용 전 — HashiCorp apt 미러 또는 바이너리 직접 배포 필요
+#       현재는 HashiCorp 공식 apt 저장소 사용 (인터넷 필요)
+
+# ── 설치 ──────────────────────────────────────────────────────
+- name: HashiCorp GPG 키 등록
+  apt_key:
+    url: https://apt.releases.hashicorp.com/gpg
+    state: present
+
+- name: HashiCorp apt 저장소 등록
+  apt_repository:
+    repo: "deb [arch=amd64] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+    state: present
+
+- name: Vault 설치
+  apt:
+    name: "vault={{ vault_version }}-1"
+    state: present
+    update_cache: true
+
+# ── 설정 ──────────────────────────────────────────────────────
+- name: Vault 데이터 디렉토리 생성
+  file:
+    path: "{{ vault_data_dir }}"
+    state: directory
+    owner: vault
+    group: vault
+    mode: '0700'
+
+- name: Vault 설정 파일 배포
+  template:
+    src: vault.hcl.j2
+    dest: "{{ vault_config_dir }}/vault.hcl"
+    owner: vault
+    group: vault
+    mode: '0640'
+  notify: restart vault
+
+# ── 서비스 ────────────────────────────────────────────────────
+- name: Vault 활성화 및 시작
+  systemd:
+    name: vault
+    enabled: true
+    state: started
+
+# ── 초기화 확인 ───────────────────────────────────────────────
+- name: Vault 초기화 여부 확인
+  command: vault status -format=json
+  environment:
+    VAULT_ADDR: "http://127.0.0.1:{{ vault_api_port }}"
+  register: vault_status
+  changed_when: false
+  failed_when: vault_status.rc not in [0, 2]  # 0: unsealed, 2: sealed(정상)
+
+# TODO: vault operator init / unseal은 보안상 수동으로 수행
+#       init 결과(unseal key, root token)는 반드시 안전한 곳에 보관
+#       자동화 시 ansible-vault로 암호화된 변수에 저장
+- name: Vault 초기화 안내
+  debug:
+    msg: >
+      Vault가 sealed 상태입니다.
+      최초 1회: vault operator init (첫 번째 노드에서)
+      이후: vault operator unseal (각 노드에서 3회)
+  when:
+    - vault_status.rc == 2
+    - inventory_hostname == groups['vault'][0]
