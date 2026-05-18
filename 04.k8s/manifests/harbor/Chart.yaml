@@ -1,0 +1,12 @@
+apiVersion: v2
+name: harbor-deployment
+# argocd(proxmox k8s 환경) 배포를 위한 harbor 설정 패키지
+description:
+type: application
+version: 1.0.0
+appVersion: 2.10.0
+dependencies:
+  - name: harbor
+    version: 1.14.0
+    # 실제 헬름 리포지토리 다운로드 주소 작성
+    repository: "https://helm.goharbor.io"
