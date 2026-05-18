@@ -1,1 +1,5 @@
 ---
+keepalived_vip: "172.16.30.90"
+keepalived_interface: "eth0"
+keepalived_router_id: 90
+keepalived_auth_pass: "kosa1234"
