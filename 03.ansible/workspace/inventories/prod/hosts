@@ -3,8 +3,8 @@
 172.16.30.12 keepalived_state=BACKUP keepalived_priority=100
 
 [vault]
-172.16.30.20
 172.16.30.21
+172.16.30.22
 
 [loadbalancers]
 172.16.20.26 keepalived_state=MASTER keepalived_priority=101
@@ -21,17 +21,20 @@
 172.16.30.46
 172.16.30.47
 
-[registry]
-172.16.30.50
+[nexus]
+172.16.30.15
 
 [cicd]
 172.16.30.55
 
-[siem]
+[minio]
 172.16.30.70
 
+[siem]
+172.16.30.85
+
 [monitoring_nodes]
-172.16.30.80
+172.16.30.91 keepalived_state=MASTER keepalived_priority=101
 
 [control]
 172.16.30.7
