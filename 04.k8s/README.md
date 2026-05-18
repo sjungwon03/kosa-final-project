@@ -32,8 +32,9 @@
 │   ├── eks/                 # EKS 클라우드 버스팅용
 │   └── namespace.yaml
 └── scripts/
-    ├── deploy-devops.sh
-    └── upgrade-devops.sh
+    ├── deploy-devops.sh    # Harbor, Gitea, Percona DB, ArgoCD
+    ├── upgrade-devops.sh   # 위 서비스 업그레이드
+    └── install-gitlab.sh   # GitLab Operator 전용 (cert-manager 선행 필요)
 ```
 
 ## 배포
@@ -81,7 +82,9 @@ scp -r 04.k8s/manifests/percona-db kosa@172.16.30.31:~/k8s/manifests/
 ./scripts/deploy-devops.sh install gitea
 ./scripts/deploy-devops.sh install percona-db
 ./scripts/deploy-devops.sh install argocd
-GL_OPERATOR_VERSION=2.9.0 ./scripts/deploy-devops.sh install gitlab-operator
+
+# GitLab은 별도 스크립트 사용 (cert-manager 선행 필요)
+GL_OPERATOR_VERSION=2.9.0 ./scripts/install-gitlab.sh install
 
 # [master-01] 개별 삭제
 ./scripts/deploy-devops.sh uninstall percona-db
@@ -90,21 +93,23 @@ GL_OPERATOR_VERSION=2.9.0 ./scripts/deploy-devops.sh install gitlab-operator
 ### 4단계: 설치 확인 (k8s 마스터)
 
 ```bash
-# [master-01] 파드 상태 확인 (전체 Running까지 최대 20분)
+# [master-01] 파드 상태 확인 (전체 Running까지 약 20분 ~ 30분)
 kubectl get pods -n harbor | grep redis
 kubectl get pods -n harbor
-kubectl get pods -n gitea
-kubectl get pods -n percona-db
 kubectl get pods -n argocd
+kubectl get pods -n gitea
+kubectl get pods -n gitlab
+kubectl get pods -n percona-db
 
 # [master-01] 상태 모니터링
 watch kubectl get pods -n percona-db
 
 # [master-01] LoadBalancer IP 확인 (172.16.30.200-202 범위)
 kubectl get svc -n harbor
-kubectl get svc -n gitea
-kubectl get svc -n percona-db
 kubectl get svc -n argocd
+kubectl get svc -n gitea
+kubectl get svc -n gitlab
+kubectl get svc -n percona-db
 ```
 
 ## 업그레이드
@@ -120,7 +125,7 @@ kubectl get svc -n argocd
 ./scripts/upgrade-devops.sh gitea
 ./scripts/upgrade-devops.sh percona-db
 ./scripts/upgrade-devops.sh argocd
-GL_OPERATOR_VERSION=2.9.0 ./scripts/upgrade-devops.sh gitlab-operator
+GL_OPERATOR_VERSION=2.9.0 ./scripts/install-gitlab.sh install
 ```
 
 ---
