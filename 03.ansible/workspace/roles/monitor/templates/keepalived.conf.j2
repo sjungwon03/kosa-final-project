@@ -1,0 +1,14 @@
+vrrp_instance VI_MONITOR {
+    state {{ keepalived_state | default('MASTER') }}
+    interface {{ keepalived_interface }}
+    virtual_router_id {{ keepalived_router_id }}
+    priority {{ keepalived_priority | default(100) }}
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass {{ keepalived_auth_pass }}
+    }
+    virtual_ipaddress {
+        {{ keepalived_vip }}
+    }
+}
