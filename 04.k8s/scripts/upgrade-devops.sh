@@ -1,13 +1,11 @@
 #!/bin/bash
+# DevOps 서비스 업그레이드 스크립트 (Harbor, Gitea, Percona DB, ArgoCD)
+# GitLab은 install-gitlab.sh로 별도 관리
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MANIFESTS_DIR="${SCRIPT_DIR}/../manifests"
-DEVOPS_NAMESPACE="devops"
-DATABASE_NAMESPACE="database"
-GITEA_NAMESPACE="gitea"
-GITLAB_OPERATOR_NAMESPACE="gitlab-system"
 TIMEOUT="${HELM_TIMEOUT:-900s}"
 WAIT_ARGS="--wait --timeout ${TIMEOUT}"
 
@@ -16,20 +14,16 @@ usage() {
 Usage: $0 [component]
 
 component:
-  all      Upgrade all (harbor, gitea, percona-db, argocd) [default]
-  harbor   Upgrade harbor only
-  gitea       Upgrade gitea only
-  percona-db  Upgrade percona-db only
-  argocd   Upgrade argocd only
-  gitlab-operator Upgrade gitlab-operator only
+  all        전체 업그레이드 (harbor, gitea, percona-db, argocd) [기본값]
+  harbor     harbor only
+  gitea      gitea only
+  percona-db percona-db only
+  argocd     argocd only
 
 Examples:
   $0
-  $0 all
   $0 gitea
-  $0 percona-db
   HELM_TIMEOUT=1200s $0 harbor
-  GL_OPERATOR_VERSION=2.9.0 $0 gitlab-operator
 USAGE
 }
 
@@ -44,22 +38,12 @@ log() {
   echo "[$(date '+%F %T')] $*"
 }
 
-ensure_namespace() {
-  local namespace="$1"
-  kubectl create namespace "${namespace}" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
-}
-
 apply_optional_secret() {
   local chart_dir="$1"
   local namespace="$2"
-  local candidate
-
-  for candidate in \
-    "${chart_dir}/00-secret.yaml" \
-    "${chart_dir}/secret.yaml" \
-    "${chart_dir}/harbor-secret.yaml"; do
+  for candidate in "${chart_dir}/00-secret.yaml" "${chart_dir}/secret.yaml"; do
     if [[ -f "${candidate}" ]]; then
-      log "Applying secret manifest: ${candidate}"
+      log "Applying secret: ${candidate}"
       kubectl apply -n "${namespace}" -f "${candidate}"
     fi
   done
@@ -81,7 +65,7 @@ upgrade_chart() {
 
   apply_optional_secret "${chart_dir}" "${namespace}"
 
-  log "Upgrading ${release}"
+  log "Upgrading ${release} in namespace ${namespace}"
   if [[ -f "${values_file}" ]]; then
     helm upgrade --install "${release}" "${chart_dir}" \
       --namespace "${namespace}" \
@@ -98,65 +82,24 @@ upgrade_chart() {
   fi
 }
 
-show_status() {
-  for ns in "${DEVOPS_NAMESPACE}" "${DATABASE_NAMESPACE}" "${GITEA_NAMESPACE}" "${GITLAB_OPERATOR_NAMESPACE}"; do
-    log "Helm releases (${ns})"
-    helm -n "${ns}" ls || true
-
-    log "Services (${ns})"
-    kubectl -n "${ns}" get svc -o wide || true
-
-    log "PVCs (${ns})"
-    kubectl -n "${ns}" get pvc || true
-
-    log "Pods (${ns})"
-    kubectl -n "${ns}" get pod -o wide || true
-  done
-}
-
-upgrade_gitlab_operator() {
-  local operator_dir="${MANIFESTS_DIR}/gitlab-operator"
-  local gitlab_cr="${operator_dir}/gitlab.yaml"
-  local version="${GL_OPERATOR_VERSION:-2.9.0}"
-  local platform="${GL_OPERATOR_PLATFORM:-kubernetes}"
-  local manifest_url="https://gitlab.com/api/v4/projects/18899486/packages/generic/gitlab-operator/${version}/gitlab-operator-${platform}-${version}.yaml"
-
-  log "Applying GitLab Operator manifest (${version}/${platform})"
-  kubectl apply -f "${manifest_url}"
-
-  if [[ -f "${gitlab_cr}" ]]; then
-    log "Applying GitLab CR (${gitlab_cr})"
-    kubectl -n "${GITLAB_OPERATOR_NAMESPACE}" apply -f "${gitlab_cr}"
-  fi
-}
-
-ensure_namespace "${DEVOPS_NAMESPACE}"
-ensure_namespace "${DATABASE_NAMESPACE}"
-ensure_namespace "${GITEA_NAMESPACE}"
-ensure_namespace "${GITLAB_OPERATOR_NAMESPACE}"
-
 case "${COMPONENT}" in
   all)
-    upgrade_chart harbor "${MANIFESTS_DIR}/harbor" "${DEVOPS_NAMESPACE}"
-    upgrade_chart gitea "${MANIFESTS_DIR}/gitea" "${GITEA_NAMESPACE}"
-    upgrade_chart percona-db "${MANIFESTS_DIR}/percona-db" "${DATABASE_NAMESPACE}"
-    upgrade_chart argocd "${MANIFESTS_DIR}/argocd" "${DEVOPS_NAMESPACE}"
-    log "NOTE: gitlab-operator is optional. Run '$0 gitlab-operator' after setting GL_OPERATOR_VERSION/GL_OPERATOR_PLATFORM."
+    upgrade_chart harbor    "${MANIFESTS_DIR}/harbor"     "harbor"
+    upgrade_chart gitea     "${MANIFESTS_DIR}/gitea"      "gitea"
+    upgrade_chart percona-db "${MANIFESTS_DIR}/percona-db" "percona-db"
+    upgrade_chart argocd    "${MANIFESTS_DIR}/argocd"     "argocd"
     ;;
   harbor)
-    upgrade_chart harbor "${MANIFESTS_DIR}/harbor" "${DEVOPS_NAMESPACE}"
+    upgrade_chart harbor    "${MANIFESTS_DIR}/harbor"     "harbor"
     ;;
   gitea)
-    upgrade_chart gitea "${MANIFESTS_DIR}/gitea" "${GITEA_NAMESPACE}"
+    upgrade_chart gitea     "${MANIFESTS_DIR}/gitea"      "gitea"
     ;;
   percona-db)
-    upgrade_chart percona-db "${MANIFESTS_DIR}/percona-db" "${DATABASE_NAMESPACE}"
+    upgrade_chart percona-db "${MANIFESTS_DIR}/percona-db" "percona-db"
     ;;
   argocd)
-    upgrade_chart argocd "${MANIFESTS_DIR}/argocd" "${DEVOPS_NAMESPACE}"
-    ;;
-  gitlab-operator)
-    upgrade_gitlab_operator
+    upgrade_chart argocd    "${MANIFESTS_DIR}/argocd"     "argocd"
     ;;
   *)
     echo "ERROR: unknown component: ${COMPONENT}" >&2
@@ -165,5 +108,4 @@ case "${COMPONENT}" in
     ;;
 esac
 
-show_status
 log "upgrade complete"
