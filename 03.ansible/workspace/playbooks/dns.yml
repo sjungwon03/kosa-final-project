@@ -1,0 +1,6 @@
+---
+- name: DNS 서버 구성
+  hosts: dns_servers
+  roles:
+    - common
+    - dns

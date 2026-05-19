@@ -1,0 +1,6 @@
+---
+- name: Vault 설치 및 설정
+  hosts: vault
+  roles:
+    - common
+    - vault

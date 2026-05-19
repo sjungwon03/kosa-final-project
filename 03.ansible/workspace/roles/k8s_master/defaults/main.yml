@@ -1,0 +1,5 @@
+---
+k8s_api_endpoint: "172.16.30.25"    # HAProxy VIP (HA 구성 시), 단일 마스터면 마스터 IP
+k8s_api_port: 6443
+calico_version: "v3.28.0"
+pod_network_cidr: "192.168.0.0/16"  # Calico 기본값

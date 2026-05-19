@@ -1,0 +1,15 @@
+---
+# VIP 관련 설정
+keepalived_vip: "172.16.20.25"
+keepalived_interface: "eth0"
+keepalived_router_id: 51
+keepalived_auth_pass: "kosa1234"
+
+# HAProxy 백엔드 — K8s 내부 VIP 단일 지정 (마스터 직접 접근 제거)
+# 마스터 개별 IP 대신 VLAN 30 내부 VIP를 통해 부하분산
+k8s_masters:
+  - { name: "k8s-vip", ip: "172.16.30.30" }
+
+haproxy_stats_port: 8080
+haproxy_stats_user: "admin"
+haproxy_stats_pass: "kosa1234"

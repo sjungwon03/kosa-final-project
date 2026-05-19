@@ -266,7 +266,7 @@ celerybeat.pid
 
 # Environments
 .venv
-env/
+/env/
 venv/
 ENV/
 env.bak/
@@ -329,9 +329,6 @@ crash.*.log
 # password, private keys, and other secrets. These should not be part of version
 # control as they are data points which are potentially sensitive and subject
 # to change depending on the environment.
-*.tfvars
-*.tfvars.json
-*.tfvars.*
 
 # Ignore override files as they are usually used to override resources locally and so
 # are not checked in
@@ -351,7 +348,24 @@ override.tf.json
 terraform.rc
 
 # End of https://www.toptal.com/developers/gitignore/api/terraform,ansible,node,python
+# Packer 민감 정보
+*.pkrvars.hcl
+credentials.pkr.hcl
+ansible.pub
 
-.secret
+# Terraform 인증 정보
+credentials.auto.tfvars
 
-.DS_Store
+# Ansible 인증서 (환경별 민감 정보)
+03.ansible/workspace/inventories/*/certs/
+!03.ansible/workspace/inventories/*/certs/.gitkeep
+
+# Ansible env
+03.ansible/.env
+
+# LLM
+CLAUDE.md
+GEMINI.md
+
+# 개인 문서
+임시.md

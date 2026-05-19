@@ -1,0 +1,9 @@
+---
+# ops/add-worker.yml — K8s 워커 노드 추가
+# 사용법: ansible-playbook playbooks/ops/add-worker.yml -i inventories/prod/hosts --limit 172.16.30.44
+- name: 신규 K8s 워커 노드 추가
+  hosts: k8s_workers
+  become: true
+  roles:
+    - k8s_common
+    - k8s_worker

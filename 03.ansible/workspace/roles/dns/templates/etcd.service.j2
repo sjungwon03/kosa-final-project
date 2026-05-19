@@ -1,0 +1,20 @@
+[Unit]
+Description=etcd key-value store for CoreDNS
+Documentation=https://github.com/etcd-io/etcd
+After=network.target
+
+[Service]
+User=etcd
+Group=etcd
+Type=notify
+ExecStart=/usr/local/bin/etcd \
+  --name dns-etcd-{{ inventory_hostname }} \
+  --data-dir {{ etcd_data_dir }} \
+  --listen-client-urls http://0.0.0.0:2379 \
+  --advertise-client-urls http://{{ ansible_host }}:2379
+Environment=ETCDCTL_API=3
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

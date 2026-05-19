@@ -1,0 +1,27 @@
+---
+# roles/monitor/tasks/main.yml
+
+- name: 모니터링 데이터 디렉토리 생성
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'  # TODO: Docker Compose 실행 유저 확인 후 owner/group 지정 (현재 0777은 보안 취약)
+  loop:
+    - /opt/monitoring
+    - /opt/monitoring/prometheus
+    - /opt/monitoring/grafana
+
+- name: Docker Compose 파일 배포
+  template:
+    src: docker-compose.yml.j2
+    dest: /opt/monitoring/docker-compose.yml
+
+- name: Prometheus 설정 파일 배포
+  template:
+    src: prometheus.yml.j2
+    dest: /opt/monitoring/prometheus/prometheus.yml
+
+- name: 모니터링 스택 실행 (Docker Compose)
+  shell: docker compose up -d
+  args:
+    chdir: /opt/monitoring

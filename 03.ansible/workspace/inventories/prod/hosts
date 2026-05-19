@@ -1,0 +1,41 @@
+[dns_servers]
+172.16.30.11 keepalived_state=MASTER keepalived_priority=101
+172.16.30.12 keepalived_state=BACKUP keepalived_priority=100
+
+[vault]
+172.16.30.20
+172.16.30.21
+
+[loadbalancers]
+172.16.20.26 keepalived_state=MASTER keepalived_priority=101
+172.16.20.27 keepalived_state=BACKUP keepalived_priority=100
+
+[k8s_masters]
+172.16.30.31 keepalived_state=MASTER keepalived_priority=101
+172.16.30.32 keepalived_state=BACKUP keepalived_priority=100
+172.16.30.33 keepalived_state=BACKUP keepalived_priority=99
+
+[k8s_workers]
+172.16.30.40
+172.16.30.45
+172.16.30.46
+172.16.30.47
+
+[registry]
+172.16.30.50
+
+[cicd]
+172.16.30.55
+
+[siem]
+172.16.30.70
+
+[monitoring_nodes]
+172.16.30.80
+
+[control]
+172.16.30.7
+
+[k8s_cluster:children]
+k8s_masters
+k8s_workers
