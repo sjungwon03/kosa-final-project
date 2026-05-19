@@ -1,0 +1,16 @@
+---
+vault_aws_haproxy_1_ip: "REPLACE_WITH_INSTANCE_1_PUBLIC_IP"
+vault_aws_haproxy_2_ip: "REPLACE_WITH_INSTANCE_2_PUBLIC_IP"
+vault_aws_vpn_ip: "REPLACE_WITH_VPN_INSTANCE_PUBLIC_IP"
+vault_haproxy_stats_pass: "REPLACE_WITH_SECURE_PASSWORD"
+vault_ssh_key_path: "../../kosa-proxy-key.pem"
+
+vault_onprem_peer_public_key: "REPLACE_WITH_ONPREM_WIREGUARD_PUBLIC_KEY"
+vault_onprem_peer_allowed_ips: "172.16.0.0/16"
+vault_onprem_peer_endpoint: ""
+
+vault_wireguard_client_ip: "10.100.0.2/24"
+vault_vpn_server_public_key: "REPLACE_WITH_VPN_SERVER_PUBLIC_KEY"
+
+vault_eks_ingress_ip: "REPLACE_WITH_EKS_INGRESS_LB_IP"
+vault_prometheus_url: "http://172.16.30.50:9090"

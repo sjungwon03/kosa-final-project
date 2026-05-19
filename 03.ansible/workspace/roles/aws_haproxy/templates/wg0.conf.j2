@@ -1,0 +1,9 @@
+[Interface]
+Address = {{ wireguard_client_ip }}
+PrivateKey = {{ lookup('file', '/etc/wireguard/private.key') }}
+
+[Peer]
+PublicKey = {{ vpn_server_public_key }}
+Endpoint = {{ vpn_server_endpoint }}:51820
+AllowedIPs = {{ onprem_cidr }}
+PersistentKeepalive = 25

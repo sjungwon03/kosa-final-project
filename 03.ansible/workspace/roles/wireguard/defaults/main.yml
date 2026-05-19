@@ -1,0 +1,8 @@
+---
+wireguard_port: 51820
+wireguard_subnet: "10.100.0.0/24"
+wireguard_server_ip: "10.100.0.1/24"
+
+onprem_peer_public_key: "{{ vault_onprem_peer_public_key | default('REPLACE_WITH_ONPREM_PUBLIC_KEY') }}"
+onprem_peer_allowed_ips: "{{ vault_onprem_peer_allowed_ips | default('172.16.0.0/16') }}"
+onprem_peer_endpoint: "{{ vault_onprem_peer_endpoint | default('') }}"

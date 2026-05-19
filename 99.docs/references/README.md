@@ -37,6 +37,7 @@
 - [11-cicd-pipeline.md](docs/11-cicd-pipeline.md) - GitLab CI/CD Pipeline
 - [12-vpn-connection.md](docs/12-vpn-connection.md) - VPN 연결 (AWS ↔ 온프레미스)
 - [13-gitlab-harbor.md](docs/13-gitlab-harbor.md) - GitLab & Harbor 구성
+- [14-aws-cloud-bursting.md](docs/14-aws-cloud-bursting.md) - AWS HAProxy + WireGuard VPN 구성
 
 ## 로컬 실행
 

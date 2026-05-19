@@ -1,0 +1,37 @@
+---
+onprem_servers:
+  - name: onprem-app-1
+    ip: 172.16.30.100
+    port: 80
+  - name: onprem-app-2
+    ip: 172.16.30.101
+    port: 80
+
+onprem_servers_https:
+  - name: onprem-app-1
+    ip: 172.16.30.100
+    port: 443
+  - name: onprem-app-2
+    ip: 172.16.30.101
+    port: 443
+
+eks_servers:
+  - name: eks-ingress
+    ip: "{{ vault_eks_ingress_ip }}"
+    port: 80
+
+eks_servers_https:
+  - name: eks-ingress
+    ip: "{{ vault_eks_ingress_ip }}"
+    port: 443
+
+haproxy_stats_user: admin
+haproxy_stats_pass: "{{ vault_haproxy_stats_pass }}"
+
+cloudburst_threshold: 80
+prometheus_url: "{{ vault_prometheus_url }}"
+
+wireguard_client_ip: "{{ vault_wireguard_client_ip }}"
+vpn_server_public_key: "{{ vault_vpn_server_public_key }}"
+vpn_server_endpoint: "{{ vault_aws_vpn_ip }}"
+onprem_cidr: "172.16.0.0/16"

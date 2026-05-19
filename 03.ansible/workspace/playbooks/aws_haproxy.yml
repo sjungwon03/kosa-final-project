@@ -1,0 +1,16 @@
+---
+- name: WireGuard VPN 서버 배포
+  hosts: aws_vpn
+  become: true
+  gather_facts: true
+
+  roles:
+    - wireguard
+
+- name: AWS HAProxy 배포
+  hosts: aws_haproxy
+  become: true
+  gather_facts: true
+
+  roles:
+    - aws_haproxy

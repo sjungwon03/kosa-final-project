@@ -1,0 +1,95 @@
+#!/bin/bash
+# Cloudburst Control Script
+# Enables/disables traffic routing to EKS based on on-prem CPU usage
+
+set -euo pipefail
+
+ACL_FILE="/etc/haproxy/acl/cloudburst_active.txt"
+HAPROXY_SOCKET="/var/run/haproxy.sock"
+PROMETHEUS_URL="{{ prometheus_url | default('http://172.16.30.50:9090') }}"
+THRESHOLD="{{ cloudburst_threshold }}"
+COOLDOWN_PERIOD=60
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
+
+get_onprem_cpu() {
+    # Query Prometheus for on-prem cluster CPU usage
+    # Returns percentage (0-100)
+    curl -s "${PROMETHEUS_URL}/api/v1/query" \
+        --data-urlencode 'query=avg(rate(container_cpu_usage_seconds_total{namespace="kosa"}[5m])) / avg(container_spec_cpu_quota{namespace="kosa"} / container_spec_cpu_period{namespace="kosa"}) * 100' \
+        | jq -r '.data.result[0].value[1]' \
+        | awk '{printf "%.0f", $1}'
+}
+
+enable_cloudburst() {
+    log "Enabling cloudburst - routing traffic to EKS"
+    echo "1" > "$ACL_FILE"
+    
+    # Notify HAProxy to reload ACL
+    echo "enable acl cloudburst_active.txt" | socat stdio unix-connect:"$HAPROXY_SOCKET"
+    
+    # Scale up EKS deployment
+    # This would typically be done by Karpenter automatically
+    log "EKS scaling triggered via Karpenter"
+}
+
+disable_cloudburst() {
+    log "Disabling cloudburst - routing traffic back to on-prem"
+    echo "0" > "$ACL_FILE"
+    
+    # Notify HAProxy to reload ACL
+    echo "disable acl cloudburst_active.txt" | socat stdio unix-connect:"$HAPROXY_SOCKET"
+    
+    # Karpenter will scale down automatically when traffic decreases
+    log "EKS will scale down via Karpenter"
+}
+
+check_and_act() {
+    CPU_USAGE=$(get_onprem_cpu)
+    
+    if [ -z "$CPU_USAGE" ] || [ "$CPU_USAGE" == "null" ]; then
+        log "Warning: Could not fetch CPU metrics, defaulting to on-prem"
+        CPU_USAGE=0
+    fi
+    
+    log "On-prem CPU usage: ${CPU_USAGE}%"
+    
+    CURRENT_STATE=$(cat "$ACL_FILE" 2>/dev/null || echo "0")
+    
+    if [ "$CPU_USAGE" -ge "$THRESHOLD" ] && [ "$CURRENT_STATE" != "1" ]; then
+        enable_cloudburst
+    elif [ "$CPU_USAGE" -lt "$THRESHOLD" ] && [ "$CURRENT_STATE" == "1" ]; then
+        # Wait for cooldown before switching back
+        sleep "$COOLDOWN_PERIOD"
+        NEW_CPU=$(get_onprem_cpu)
+        if [ "$NEW_CPU" -lt "$THRESHOLD" ]; then
+            disable_cloudburst
+        fi
+    fi
+}
+
+case "${1:-check}" in
+    enable)
+        enable_cloudburst
+        ;;
+    disable)
+        disable_cloudburst
+        ;;
+    status)
+        CURRENT=$(cat "$ACL_FILE" 2>/dev/null || echo "0")
+        if [ "$CURRENT" == "1" ]; then
+            echo "Cloudburst: ACTIVE (traffic routed to EKS)"
+        else
+            echo "Cloudburst: INACTIVE (traffic routed to on-prem)"
+        fi
+        ;;
+    check)
+        check_and_act
+        ;;
+    *)
+        echo "Usage: $0 {enable|disable|status|check}"
+        exit 1
+        ;;
+esac

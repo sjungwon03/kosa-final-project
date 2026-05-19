@@ -1,0 +1,30 @@
+data "aws_route53_zone" "this" {
+  name         = var.domain_name
+  private_zone = false
+}
+
+resource "aws_route53_record" "this" {
+  zone_id = data.aws_route53_zone.this.zone_id
+  name    = var.record_name
+  type    = "A"
+
+  alias {
+    name                   = var.lb_dns_name
+    zone_id                = var.lb_zone_id
+    evaluate_target_health = true
+  }
+}
+
+resource "aws_route53_record" "www" {
+  count = var.create_www_record ? 1 : 0
+
+  zone_id = data.aws_route53_zone.this.zone_id
+  name    = "www.${var.record_name}"
+  type    = "A"
+
+  alias {
+    name                   = var.lb_dns_name
+    zone_id                = var.lb_zone_id
+    evaluate_target_health = true
+  }
+}

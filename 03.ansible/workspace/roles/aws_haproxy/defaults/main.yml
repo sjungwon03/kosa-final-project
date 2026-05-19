@@ -1,0 +1,43 @@
+---
+haproxy_stats_port: 8404
+haproxy_stats_user: admin
+haproxy_stats_pass: "{{ vault_haproxy_stats_pass | default('changeme') }}"
+
+onprem_servers:
+  - name: onprem-server-1
+    ip: 172.16.30.10
+    port: 80
+  - name: onprem-server-2
+    ip: 172.16.30.11
+    port: 80
+
+onprem_servers_https:
+  - name: onprem-server-1
+    ip: 172.16.30.10
+    port: 443
+  - name: onprem-server-2
+    ip: 172.16.30.11
+    port: 443
+
+eks_servers:
+  - name: eks-ingress-1
+    ip: "{{ vault_eks_ingress_ip | default('10.0.3.10') }}"
+    port: 80
+
+eks_servers_https:
+  - name: eks-ingress-1
+    ip: "{{ vault_eks_ingress_ip | default('10.0.3.10') }}"
+    port: 443
+
+haproxy_maxconn: 2000
+haproxy_timeout_connect: 5s
+haproxy_timeout_client: 50s
+haproxy_timeout_server: 50s
+
+cloudburst_threshold: 80
+cloudburst_active: false
+
+wireguard_client_ip: "{{ vault_wireguard_client_ip | default('10.100.0.2/24') }}"
+vpn_server_public_key: "{{ vault_vpn_server_public_key | default('REPLACE_WITH_VPN_SERVER_PUBLIC_KEY') }}"
+vpn_server_endpoint: "{{ vault_vpn_server_endpoint }}"
+onprem_cidr: "{{ vault_onprem_cidr | default('172.16.0.0/16') }}"
