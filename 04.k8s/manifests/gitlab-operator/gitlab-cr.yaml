@@ -14,6 +14,8 @@ spec:
           https: false
           gitlab:
             name: gitlab.mgmt.local
+            port: 8181
+            https: false
         ingress:
           enabled: false
           configureCertmanager: false
@@ -25,13 +27,14 @@ spec:
             kubernetes.io/hostname: k8s-worker-plat
           minReplicas: 1
           maxReplicas: 1
+          workerProcesses: 2
           resources:
             requests:
               cpu: 500m
-              memory: 1.5Gi
+              memory: 2Gi
             limits:
               cpu: 1000m
-              memory: 2.5Gi
+              memory: 3.5Gi
           service:
             type: LoadBalancer
             loadBalancerIP: "172.16.30.203"
@@ -53,6 +56,16 @@ spec:
             limits:
               cpu: 600m
               memory: 2Gi
+        sidekiq:
+          nodeSelector:
+            kubernetes.io/hostname: k8s-worker-plat
+          resources:
+            requests:
+              memory: 1Gi
+            limits:
+              memory: 2Gi
+        migrations:
+          activeDeadlineSeconds: 7200
         gitlab-shell:
           nodeSelector:
             kubernetes.io/hostname: k8s-worker-plat
