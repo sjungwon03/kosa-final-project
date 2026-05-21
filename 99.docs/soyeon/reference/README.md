@@ -7,7 +7,7 @@
 ---
 
 ## 📌 주요 인프라 정보
-- **웹 UI 주소:** `https://harbor.192.168.34.2.nip.io:32445`
+- **웹 UI 주소:** `https://harbor.example.nip.io:포트번호`
 - **초기 관리자 정보:** ID: `admin` / PW: `Kosa1004`
 
 ---
@@ -53,7 +53,7 @@
 ### 1. **[GitLab CI 담당자]**
 - CI 파이프라인 스크립트 실행 전 아래 명령어로 로그인을 선행해야 합니다.
   ```bash
-  docker login harbor.192.168.34.2.nip.io:32445
+  docker login harbor.example.nip.io:포트번호
   ```
 - 빌드 파이프라인 연동 시, 보안을 위해 개인 계정이 아닌 Harbor 내부에서 전용 **Robot Account**를 발급하여 토큰 형태로 사용하시는 것을 권장합니다.
 
@@ -61,5 +61,5 @@
 - **스토리지 설정**: 데이터 보존을 위해 `persistence.enabled: true`가 켜져 있습니다. 클러스터 환경의 StorageClass 명칭에 맞게 `values.yaml` 하단의 `storageClass` 이름을 매칭한 뒤 배포(Sync)해 주세요. (현재 임시로 `local-path` 지정됨)
 - **런타임 보안 설정**: 사설 인증서 환경이므로 K8s 모든 노드의 컨테이너 런타임 설정에 아래와 같이 비인증 레지스트리 추가가 필요합니다.
   ```json
-  insecure-registries: ["harbor.192.168.34.2.nip.io:32445"]
+  insecure-registries: ["harbor.example.nip.io:포트번호"]
   ```
