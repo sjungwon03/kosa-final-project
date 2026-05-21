@@ -18,10 +18,22 @@ variable "lb_zone_id" {
   type        = string
 }
 
+variable "create_zone" {
+  description = "Whether to create Route53 hosted zone"
+  type        = bool
+  default     = true
+}
+
 variable "create_www_record" {
   description = "Create www subdomain record"
   type        = bool
   default     = false
+}
+
+variable "enabled" {
+  description = "Whether to create Route53 records"
+  type        = bool
+  default     = true
 }
 
 variable "tags" {

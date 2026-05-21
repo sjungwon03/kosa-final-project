@@ -36,6 +36,12 @@ variable "allowed_cidrs" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "create_ssm_role" {
+  description = "Whether to create SSM IAM role for EC2"
+  type        = bool
+  default     = true
+}
+
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)

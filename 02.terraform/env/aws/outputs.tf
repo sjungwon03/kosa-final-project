@@ -18,12 +18,74 @@ output "domain_record" {
   value = module.route53.record_fqdn
 }
 
-output "vpn_instance_public_ip" {
-  value = module.wireguard.public_ip
+output "route53_name_servers" {
+  value = module.route53.name_servers
 }
 
-output "vpn_instance_private_ip" {
-  value = module.wireguard.private_ip
+output "vpn_connection_id" {
+  value       = var.customer_gateway_ip != "" ? module.site_to_site_vpn.vpn_connection_id : null
+  description = "AWS VPN Connection ID"
+}
+
+output "vpn_tunnel1_address" {
+  value       = var.customer_gateway_ip != "" ? module.site_to_site_vpn.tunnel1_address : null
+  description = "AWS Tunnel 1 Outside IP (pfSense Phase 1 Remote Gateway)"
+}
+
+output "vpn_tunnel2_address" {
+  value       = var.customer_gateway_ip != "" ? module.site_to_site_vpn.tunnel2_address : null
+  description = "AWS Tunnel 2 Outside IP (pfSense Phase 1 Remote Gateway)"
+}
+
+output "vpn_tunnel1_preshared_key" {
+  value       = var.customer_gateway_ip != "" ? module.site_to_site_vpn.tunnel1_preshared_key : null
+  sensitive   = true
+  description = "AWS Tunnel 1 Pre-Shared Key (pfSense Phase 1 PSK)"
+}
+
+output "vpn_tunnel2_preshared_key" {
+  value       = var.customer_gateway_ip != "" ? module.site_to_site_vpn.tunnel2_preshared_key : null
+  sensitive   = true
+  description = "AWS Tunnel 2 Pre-Shared Key (pfSense Phase 1 PSK)"
+}
+
+output "vpn_customer_gateway_configuration" {
+  value       = var.customer_gateway_ip != "" ? module.site_to_site_vpn.customer_gateway_configuration : null
+  sensitive   = true
+  description = "AWS VPN Customer Gateway Configuration XML (contains all IKE/IPsec parameters)"
+}
+
+output "vpn_tunnel_outside_ips" {
+  value = var.customer_gateway_ip != "" ? [
+    module.site_to_site_vpn.tunnel1_address,
+    module.site_to_site_vpn.tunnel2_address
+  ] : null
+  description = "AWS VPN tunnel outside IPs (for pfSense Phase 1 Remote Gateway)"
+}
+
+output "customer_gateway_id" {
+  value       = var.customer_gateway_ip != "" ? module.site_to_site_vpn.customer_gateway_id : null
+  description = "AWS Customer Gateway ID"
+}
+
+output "vgw_id" {
+  value       = module.site_to_site_vpn.vgw_id
+  description = "AWS Virtual Private Gateway ID"
+}
+
+output "aws_vpc_cidr" {
+  value       = var.vpc_cidr
+  description = "AWS VPC CIDR (pfSense Phase 2 Remote Network)"
+}
+
+output "onprem_cidr" {
+  value       = var.onprem_cidr_block
+  description = "On-Premises CIDR (pfSense Phase 2 Local Network)"
+}
+
+output "haproxy_instance_ids" {
+  value       = module.ec2.instance_ids
+  description = "HAProxy EC2 Instance IDs (for SSM Session Manager)"
 }
 
 output "ssh_key_name" {
@@ -32,10 +94,6 @@ output "ssh_key_name" {
 
 output "ssh_key_path" {
   value = "${path.module}/../../modules/aws/keypair/${module.keypair.key_name}.pem"
-}
-
-output "ssh_connection_command" {
-  value = "ssh -i ${path.module}/../../modules/aws/keypair/${module.keypair.key_name}.pem ec2-user@${module.ec2.public_ips[0]}"
 }
 
 output "eks_cluster_name" {

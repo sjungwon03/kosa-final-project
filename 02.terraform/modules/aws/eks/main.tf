@@ -10,6 +10,10 @@ resource "aws_eks_cluster" "this" {
     public_access_cidrs     = var.allowed_cidrs
   }
 
+  access_config {
+    authentication_mode = "API_AND_CONFIG_MAP"
+  }
+
   enabled_cluster_log_types = var.cluster_log_types
 
   tags = merge(var.tags, {
@@ -44,17 +48,128 @@ resource "aws_iam_role_policy_attachment" "cluster_vpc_resource" {
   role       = aws_iam_role.cluster.name
 }
 
+resource "aws_iam_role" "node_group" {
+  count = var.create_node_group ? 1 : 0
+
+  name = "${var.cluster_name}-node-group"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "node_group_worker" {
+  count = var.create_node_group ? 1 : 0
+
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.node_group[0].name
+}
+
+resource "aws_iam_role_policy_attachment" "node_group_cni" {
+  count = var.create_node_group ? 1 : 0
+
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+  role       = aws_iam_role.node_group[0].name
+}
+
+resource "aws_iam_role_policy_attachment" "node_group_ecr" {
+  count = var.create_node_group ? 1 : 0
+
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = aws_iam_role.node_group[0].name
+}
+
+resource "aws_eks_node_group" "this" {
+  count = var.create_node_group ? 1 : 0
+
+  cluster_name    = aws_eks_cluster.this.name
+  node_group_name = "${var.cluster_name}-nodes"
+  node_role_arn   = aws_iam_role.node_group[0].arn
+  subnet_ids      = var.subnet_ids
+
+  instance_types = var.node_group_instance_types
+  capacity_type  = "ON_DEMAND"
+
+  scaling_config {
+    desired_size = var.node_group_desired_size
+    min_size     = var.node_group_min_size
+    max_size     = var.node_group_max_size
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.node_group_worker[0],
+    aws_iam_role_policy_attachment.node_group_cni[0],
+    aws_iam_role_policy_attachment.node_group_ecr[0]
+  ]
+
+  tags = var.tags
+}
+
 resource "aws_eks_addon" "vpc_cni" {
-  cluster_name = aws_eks_cluster.this.name
-  addon_name   = "vpc-cni"
+  count = var.create_addons ? 1 : 0
+
+  cluster_name                = aws_eks_cluster.this.name
+  addon_name                  = "vpc-cni"
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  depends_on = [
+    aws_eks_cluster.this,
+    aws_eks_node_group.this
+  ]
+
+  timeouts {
+    create = "30m"
+    update = "30m"
+    delete = "30m"
+  }
 }
 
 resource "aws_eks_addon" "coredns" {
-  cluster_name = aws_eks_cluster.this.name
-  addon_name   = "coredns"
+  count = var.create_addons ? 1 : 0
+
+  cluster_name                = aws_eks_cluster.this.name
+  addon_name                  = "coredns"
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  depends_on = [
+    aws_eks_cluster.this,
+    aws_eks_node_group.this
+  ]
+
+  timeouts {
+    create = "30m"
+    update = "30m"
+    delete = "30m"
+  }
 }
 
 resource "aws_eks_addon" "kube_proxy" {
-  cluster_name = aws_eks_cluster.this.name
-  addon_name   = "kube-proxy"
+  count = var.create_addons ? 1 : 0
+
+  cluster_name                = aws_eks_cluster.this.name
+  addon_name                  = "kube-proxy"
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  depends_on = [
+    aws_eks_cluster.this,
+    aws_eks_node_group.this
+  ]
+
+  timeouts {
+    create = "30m"
+    update = "30m"
+    delete = "30m"
+  }
 }

@@ -1,27 +1,60 @@
-name                = "kosa-proxy"
-aws_region          = "ap-northeast-2"
-aws_profile         = "kosa"
-vpc_cidr            = "10.0.0.0/16"
-public_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24"]
-instance_type       = "t3.micro"
-domain_name         = "example.com"
-record_name         = "proxy.example.com"
-create_www_record   = true
+name              = "kosa-hybrid"
+aws_region        = "ap-northeast-2"
+aws_profile       = "kosa"
+instance_type     = "t3.micro"
 
-onprem_cidr_block   = "172.16.0.0/16"
+# VPC CIDR (must not overlap with on-prem)
+vpc_cidr              = "10.20.0.0/16"
+public_subnet_cidrs   = ["10.20.1.0/24", "10.20.2.0/24"]
+private_subnet_cidrs  = ["10.20.10.0/24", "10.20.20.0/24"]
 
-user_data = <<-EOF
-  #!/bin/bash
-  yum update -y
-  yum install -y haproxy
-  systemctl enable haproxy
-  systemctl start haproxy
-  EOF
+# On-Prem CIDR for VPN routing
+onprem_cidr_block = "172.16.0.0/12"
 
-allowed_cidrs = ["0.0.0.0/0"]
+# Customer Gateway (pfSense WAN public IP)
+# Run: curl -4 ifconfig.me on pfSense or check NAT/ISP public IP
+customer_gateway_ip = ""
 
+# Domain configuration
+domain_name    = ""
+record_name    = ""
+
+# NAT Gateway for private subnet outbound
+create_nat_gateway = true
+
+# S3 Gateway Endpoint for S3 access without NAT
+create_s3_endpoint = true
+
+# SSM IAM Role for private EC2 access via Session Manager
+create_ssm_role = true
+
+# Customer Gateway Public IP (TP-Link ER605 external IP)
+# This is NOT pfSense WAN IP, it's the public IP visible from AWS
+# Check with: curl ifconfig.me from on-prem network
+# Example: 125.131.208.229
+customer_gateway_ip = ""
+
+# NAT Gateway Configuration
+# nat_gateway_per_az = true: 2 NAT Gateways (HA, ~$64/month)
+# nat_gateway_per_az = false: 1 NAT Gateway (~$32/month)
+nat_gateway_per_az = true
+
+# Route53 Hosted Zone creation
+route53_create_zone = true
+route53_enabled     = true
+
+# EKS configuration
+eks_version           = "1.30"
+eks_create_addons     = false
+eks_create_node_group = true
+eks_node_instance_types = ["t3.small"]
+eks_node_desired_size   = 2
+eks_node_min_size       = 1
+eks_node_max_size       = 3
+
+# Tags
 tags = {
-  Project     = "kosa-final"
+  Project     = "kosa-hybrid"
   Environment = "prod"
   ManagedBy   = "terraform"
 }

@@ -35,9 +35,9 @@ resource "aws_iam_instance_profile" "karpenter" {
 }
 
 resource "aws_ec2_tag" "subnet" {
-  for_each = toset(var.subnet_ids)
+  count = length(var.subnet_ids)
 
-  resource_id = each.value
+  resource_id = var.subnet_ids[count.index]
   key         = "karpenter.sh/discovery"
   value       = var.cluster_name
 }
@@ -54,4 +54,6 @@ resource "aws_eks_access_entry" "karpenter" {
   type          = "EC2_LINUX"
 
   tags = var.tags
+
+  depends_on = [aws_iam_role_policy_attachment.karpenter]
 }

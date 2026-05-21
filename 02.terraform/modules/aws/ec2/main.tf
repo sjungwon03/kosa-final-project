@@ -13,6 +13,41 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
+resource "aws_iam_role" "ssm" {
+  count = var.create_ssm_role ? 1 : 0
+
+  name = "${var.name}-ssm-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "ssm" {
+  count = var.create_ssm_role ? 1 : 0
+
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  role       = aws_iam_role.ssm[0].name
+}
+
+resource "aws_iam_instance_profile" "ssm" {
+  count = var.create_ssm_role ? 1 : 0
+
+  name = "${var.name}-ssm-profile"
+  role = aws_iam_role.ssm[0].name
+
+  tags = var.tags
+}
+
 resource "aws_instance" "this" {
   count = length(var.subnet_ids)
 
@@ -21,6 +56,7 @@ resource "aws_instance" "this" {
   subnet_id              = var.subnet_ids[count.index]
   vpc_security_group_ids = [aws_security_group.this.id]
   key_name               = var.key_name
+  iam_instance_profile   = var.create_ssm_role ? aws_iam_instance_profile.ssm[0].name : null
 
   user_data = var.user_data
 
