@@ -3,18 +3,18 @@ expose:
   tls:
     auto:
       # 인증서 표준 규격 (port, protocol을 제외한 domain만 작성
-      commonName: "harbor.192.168.34.2.nip.io"
+      commonName: "harbor.example.nip.io"
   ingress:
     hosts:
       # ingress 라우팅용 해더 매칭 문자열((port, protocol을 제외)을 적는 부분 
-      core: harbor.192.168.34.2.nip.io
+      core: harbor.example.nip.io
     annotations:
       nginx.ingress.kubernetes.io/proxy-body-size: "0"
 
 # docker client가 토큰을 발행받고 실제로 통신할 때 사용하는 주소 (port 포함)
-externalURL: https://harbor.192.168.34.2.nip.io:32445  
+externalURL: https://harbor.example.nip.io:port번호  
 
-harborAdminPassword: "Kosa1004"
+harborAdminPassword: "admin비밀번호"
 persistence:
   # harbor에 이미지push할 때 harbor의 pod가 재시작되거나 vm 다운 시 컨테이너 이미지와 DB 데이터 삭제 방지를 위해 false -> true로 지정
   enabled: true
