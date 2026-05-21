@@ -8,7 +8,7 @@
 
 ## 📌 주요 인프라 정보
 - **웹 UI 주소:** `https://harbor.example.nip.io:포트번호`
-- **초기 관리자 정보:** ID: `admin` / PW: `admin비밀번호`
+- **초기 관리자 정보:** ID: `admin` / PW: `Harbor12345`
 
 ---
 
