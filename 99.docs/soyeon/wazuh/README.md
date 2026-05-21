@@ -25,6 +25,9 @@ Wazuh 기반 통합 보안 관제(SIEM) 환경에서 **로그 수집부터 Dashb
 | 서버명 | IP | 역할 |
 |---|---|---|
 | siem-01 | 172.16.30.85 | Wazuh Manager, Indexer, Dashboard |
+| haproxy-01 | 172.16.20.26 | 로드밸런서 |
+| haproxy-02 | 172.16.20.27 | 로드밸런서 |
+| monitor-01 | 172.16.30.90 | 모니터링 서버 |
 | k8s-master-01 | 172.16.30.30 | Kubernetes 마스터 |
 | k8s-master-02 | 172.16.30.32 | Kubernetes 마스터 |
 | k8s-master-03 | 172.16.30.33 | Kubernetes 마스터 |
@@ -32,22 +35,10 @@ Wazuh 기반 통합 보안 관제(SIEM) 환경에서 **로그 수집부터 Dashb
 | k8s-worker-02 | 172.16.30.46 | Kubernetes 워커 |
 | k8s-worker-03 | 172.16.30.47 | Kubernetes 워커 |
 | k8s-worker-plat | 172.16.30.40 | Kubernetes 워커 (플랫폼) |
-| dns1 | 172.16.30.10 | DNS 서버 |
-| dns2 | 172.16.30.12 | DNS 서버 |
-| vault-01 | 172.16.30.21 | HashiCorp Vault |
-| vault-02 | 172.16.30.22 | HashiCorp Vault |
-| vault-03 | 172.16.30.23 | HashiCorp Vault |
-| haproxy-01 | 172.16.20.26 | 로드밸런서 |
-| haproxy-02 | 172.16.20.27 | 로드밸런서 |
-| control | 172.16.30.7 | 컨트롤 서버 |
-| minio-01 | 172.16.30.70 | MinIO 오브젝트 스토리지 |
-| monitor-01 | 172.16.30.90 | 모니터링 서버 |
-| cicd-01 | 172.16.30.55 | CI/CD 서버 |
-| nexus-01 | 172.16.30.15 | Nexus 아티팩트 저장소 |
 | **pfSense** | **172.16.30.1** | 최전방 방화벽 (Agentless) |
 
 > k8s-master-01(.30/.31), dns1(.10/.11), monitor-01(.90/.91)은 VM 1대에 IP가 2개 할당된 구조입니다.  
-> Agent는 VM당 1개 설치이므로 대표 IP 기준 총 19대입니다.  
+> Agent는 VM당 1개 설치이므로 대표 IP 기준 총 10대입니다.  
 > pfSense는 커널 충돌 우려로 Agent 미설치 → 514/UDP Syslog로 로그 수집합니다.
 
 ---
