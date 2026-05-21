@@ -1,6 +1,5 @@
 # pfSense Syslog 설정  
 다음은 Wazuh Agent를 설치할 수 없는 pfSense(최전방 방화벽)의 로그를 **514/UDP Syslog**로 원격 수집 설정 과정입니다.
-> 최소 권한 원칙
 
 ---
 ## 01) pfSense에 Agent를 설치하지 않는 이유  
@@ -20,9 +19,11 @@ pfSense는 실시간 패킷을 처리하는 방화벽 장비입니다.
 
 pfSense가 siem-01(172.16.30.85)으로 Syslog를 전송할 때 목적지가 `172.16.30.x` 대역이므로 출발지 IP는 `172.16.30.1`입니다.  
 따라서 Manager의 `allowed-ips`는 `172.16.30.1` 하나만 허용합니다.  
+> 꼭 필요한 대상에게만 최소한의 접근 권한을 부여하는 최소 권한 원칙에 따라,  
+> Manager의 allowed-ips는 pfsense ip인 `172.16.30.1` 하나만 허용했습니다.
 
 ---
-## 03-1) pfSense Syslog 설정 방법 (CLI)  
+## 03-1) pfSense Syslog 설정 방법 (UI)  
 **1. pfSense 웹 콘솔 접속**
 ```
 https://172.16.30.1
@@ -43,7 +44,6 @@ Status > System Logs > Settings
 | Protocol | UDP |
 
 **4. Remote Syslog Contents 항목 체크**
-
 | 항목 | 수집 목적 |
 |---|---|
 | ✔ Firewall Events | 방화벽 차단·허용 로그 |
@@ -54,7 +54,7 @@ Status > System Logs > Settings
 **5. Save 클릭**
 
 ---
-## 03-2) pfSense Syslog 설정 방법 (UI)  
+## 03-2) pfSense Syslog 설정 방법 (CLI)  
 **1. pfSense 접속 후 쉘 진입**  
 pfSense 메인 메뉴에서 `8` 입력 → 쉘(Shell) 진입
 
