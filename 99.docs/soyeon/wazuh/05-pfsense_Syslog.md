@@ -6,7 +6,7 @@
 pfSense는 실시간 패킷을 처리하는 방화벽 장비입니다.  
 외부 프로그램(Wazuh Agent)을 설치하면 커널 충돌이 발생할 수 있고,  
 이는 방화벽 마비 → 네트워크 전체 장애로 이어질 수 있습니다.  
-대신 pfSense가 기본 지원하는 **Syslog 원격 전송(514/UDP)** 으로 로그를 수집합니다.  
+대신 pfSense가 기본 지원하는 **Syslog 원격 전송(514/UDP)** 으로 로그를 수집합니다.
 > 방화벽이 뚫리더라도 내부 10대 서버 전부 Agent가 설치되어 있어 위협(이상)을 탐지할 수 있습니다.
 
 ---
@@ -16,9 +16,9 @@ pfSense는 실시간 패킷을 처리하는 방화벽 장비입니다.
 | pfSense | 172.16.30.1 | VLAN30 게이트웨이 |
 | siem-01 (Wazuh Manager) | 172.16.30.85 | VLAN30 내부망 |
 
-> pfSense가 siem-01(172.16.30.85)으로 Syslog를 전송할 때 목적지가 `172.16.30.x` 대역이므로 출발지 IP는 `172.16.30.1`입니다.  
-> 따라서 Manager의 `allowed-ips`는 `172.16.30.1` 하나만 허용합니다.  
-> 이는 꼭 필요한 대상에게만 최소한의 접근 권한을 부여하는 **최소 권한 원칙**을 적용한 것입니다.
+pfSense가 siem-01(172.16.30.85)으로 Syslog를 전송할 때 목적지가 `172.16.30.x` 대역이므로 출발지 IP는 `172.16.30.1`입니다.  
+따라서 Manager의 `allowed-ips`는 `172.16.30.1` 하나만 허용합니다.  
+이는 꼭 필요한 대상에게만 최소한의 접근 권한을 부여하는 **최소 권한 원칙**을 적용한 것입니다.
 
 ---
 ## 03-1) pfSense Syslog 설정 방법 (Web UI)
@@ -51,16 +51,23 @@ Status > System Logs > Settings
 **5. Save 클릭**
 
 ---
-## 03-2) pfSense Syslog 설정 방법 (CLI)
-**1. pfSense 접속 후 쉘 진입**  
-pfSense 메인 메뉴에서 `8` 입력 → 쉘(Shell) 진입
-```
-Enter an option: 8
+## 03-2) pfSense Syslog 설정 방법 (Shell Script)
+Web UI 대신 `05-pfsense_syslog.sh` 쉘 스크립트를 사용하면  
+siem-01서버에서 pfSense에 SSH로 원격 접속하여 자동으로 설정할 수 있습니다.
+
+### 실행 순서
+```bash
+# 1. siem-01에서 pfSense로 SSH 키 배포 (최초 1회)
+ssh-keygen -t rsa -b 4096 -N "" -f ~/.ssh/id_rsa
+ssh-copy-id admin@172.16.30.1
+
+# 2. 스크립트 실행
+sudo chmod +x 05-pfsense_syslog.sh
+sudo ./05-pfsense_syslog.sh
 ```
 
-**2. 원격 Syslog 설정 주입**
+### 스크립트 내부 동작
 ```bash
-# Wazuh Manager IP(172.16.30.85)로 모든 로그를 전송하도록 설정
 # config.xml에 원격 Syslog 서버 IP와 포트 주입
 /usr/local/sbin/fcgicli -f /etc/inc/config.inc -d "config[syslog][remoteserver]=172.16.30.85"
 /usr/local/sbin/fcgicli -f /etc/inc/config.inc -d "config[syslog][remoteserver2]="
@@ -78,9 +85,9 @@ rm /tmp/config.cache
 /etc/rc.d/syslogd restart
 ```
 
-**3. siem-01 ossec.conf 수신 설정 확인**
-`02-manager_json_process.sh` 실행 시 자동으로 설정됩니다.  
-아래 내용이 `/var/ossec/etc/ossec.conf`에 있는지 확인하세요.
+### siem-01 ossec.conf 수신 설정 확인
+`02-manager_json_process.sh` 실행 시 자동으로 수신되도록 설정됩니다.  
+아래 내용이 `/var/ossec/etc/ossec.conf`에 있는지 `sudo vim /var/ossec/etc/ossec.conf` 명령으로 확인해주세요.
 ```xml
 <remote>
   <connection>syslog</connection>
@@ -95,12 +102,16 @@ rm /tmp/config.cache
 grep -A 6 "syslog" /var/ossec/etc/ossec.conf
 ```
 
----
+### 주의사항
+> **SSH 키 배포 필수** — 반드시 스크립트 실행 전 siem-01에서 pfSense로 SSH 키 배포가 된 상태여야 합니다.
+> **pfSense SSH 활성화 확인** — UI 사용 시, pfSense 웹 콘솔에서 `System > Advanced > Admin Access > Secure Shell` 항목이 활성화되어 있는지 확인해주세요.
+> **02-manager_json_process.sh 선행 필요** — ossec.conf에 Syslog 수신 설정이 없으면 스크립트가 중단됩니다. `02-manager_json_process.sh`를 먼저 실행해주세요.
 
+---
 ## 04) 수신 확인 (siem-01에서)
 ```bash
 # pfSense Syslog 수신 여부 실시간 확인
 sudo tcpdump -i any udp port 514
 ```
 
-이렇게 pfSense 로그가 출력되면 정상입니다.
+pfSense 로그가 출력되면 정상입니다.
