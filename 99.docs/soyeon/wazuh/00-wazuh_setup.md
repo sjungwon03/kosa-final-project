@@ -10,7 +10,6 @@
         ↓
 03-indexer_store.sh          → 정제된 JSON을 Indexer에 저장
 ```
-
 > `04-wazuh_all.sh`는 위 3개를 순서대로 한 번에 실행하는 통합 스크립트입니다.  
 > pfSense Syslog 설정은 `05-pfsense_syslog.md`를 참고하세요.
 
@@ -39,7 +38,6 @@ heredoc 내 single quote, XML 특수문자 이스케이프 오류가 발생할 �
 | monitor-01 (1대) | Prometheus·Grafana·Alertmanager 로그 및 FIM | 모니터링 스택 이상 행위 탐지 |
 
 **공통 수집 로그**
-
 | 로그 파일 | 수집 목적 |
 |---|---|
 | `/var/log/auth.log` | SSH 무단 접근·인증 실패 (핵심) |
@@ -150,6 +148,123 @@ sudo ./03-indexer_store.sh
 ```
 
 ---
+## 04-pfsense_syslog.sh
+
+### 역할
+Wazuh Agent를 설치할 수 없는 pfSense(최전방 방화벽)의 로그를 **514/UDP Syslog**로 원격 수집하는 설정을 자동화합니다.
+
+### pfSense에 Agent를 설치하지 않는 이유
+pfSense는 실시간 패킷을 처리하는 방화벽 장비입니다.  
+외부 프로그램(Wazuh Agent)을 설치하면 커널 충돌이 발생할 수 있고,  
+이는 방화벽 마비 → 네트워크 전체 장애로 이어질 수 있습니다.  
+대신 pfSense가 기본 지원하는 **Syslog 원격 전송(514/UDP)** 으로 로그를 수집합니다.
+> 방화벽이 뚫리더라도 내부 10대 서버 전부 Agent가 설치되어 있어 위협(이상)을 탐지할 수 있습니다.
+
+### 네트워크 구성
+| 장비 | IP | 위치 |
+|---|---|---|
+| pfSense | 172.16.30.1 | VLAN30 게이트웨이 |
+| siem-01 (Wazuh Manager) | 172.16.30.85 | VLAN30 내부망 |
+
+> pfSense가 siem-01(172.16.30.85)으로 Syslog를 전송할 때 목적지가 `172.16.30.x` 대역이므로 출발지 IP는 `172.16.30.1`입니다.  
+> 따라서 Manager의 `allowed-ips`는 `172.16.30.1` 하나만 허용합니다.  
+> 이는 꼭 필요한 대상에게만 최소한의 접근 권한을 부여하는 **최소 권한 원칙**을 적용한 것입니다.
+
+### pfSense Syslog 설정 방법 (Web UI)
+**1. pfSense 웹 콘솔 접속**
+```
+https://172.16.30.1
+```
+
+**2. Syslog 설정 메뉴 이동**
+```
+Status > System Logs > Settings
+```
+
+**3. Remote Logging Options 설정**
+| 항목 | 값 |
+|---|---|
+| Enable Remote Logging | ✔ 체크 |
+| Remote log servers IP | 172.16.30.85 |
+| Remote log servers Port | 514 |
+| Protocol | UDP |
+
+**4. Remote Syslog Contents 항목 체크**
+| 항목 | 수집 목적 |
+|---|---|
+| ✔ Firewall Events | 방화벽 차단·허용 로그 |
+| ✔ General Authentication Events | 인증 로그 |
+| ✔ DHCP Events | IP 할당 로그 |
+| ✔ VPN Events | VPN 접속 로그 |
+
+**5. Save 클릭**
+
+
+### pfSense Syslog 설정 방법 (Shell Script)
+Web UI 대신 `05-pfsense_syslog.sh` 쉘 스크립트를 사용하면  
+siem-01 서버에서 pfSense에 SSH로 원격 접속하여 자동으로 설정할 수 있습니다.
+
+**실행 순서**
+```bash
+# 1. siem-01에서 pfSense로 SSH 키 배포 (최초 1회)
+ssh-keygen -t rsa -b 4096 -N "" -f ~/.ssh/id_rsa
+ssh-copy-id admin@172.16.30.1
+
+# 2. 스크립트 실행
+sudo chmod +x 05-pfsense_syslog.sh
+sudo ./05-pfsense_syslog.sh
+```
+
+**스크립트 내부 동작**
+```bash
+# config.xml에 원격 Syslog 서버 IP와 포트 주입
+/usr/local/sbin/fcgicli -f /etc/inc/config.inc -d "config[syslog][remoteserver]=172.16.30.85"
+/usr/local/sbin/fcgicli -f /etc/inc/config.inc -d "config[syslog][remoteserver2]="
+/usr/local/sbin/fcgicli -f /etc/inc/config.inc -d "config[syslog][remoteport]=514"
+
+# 모든 로그(방화벽, 시스템 등)를 원격으로 전송하도록 활성화
+/usr/local/sbin/fcgicli -f /etc/inc/config.inc -d "config[syslog][sourceip]=any"
+/usr/local/sbin/fcgicli -f /etc/inc/config.inc -d "config[syslog][enable]=yes"
+/usr/local/sbin/fcgicli -f /etc/inc/config.inc -d "config[syslog][logallremote]=yes"
+
+# 변경된 설정 파일 저장 및 캐시 삭제
+rm /tmp/config.cache
+
+# syslogd 서비스 재시작
+/etc/rc.d/syslogd restart
+```
+
+### siem-01 ossec.conf 수신 설정 확인
+`02-manager_json_process.sh` 실행 시 자동으로 수신되도록 설정됩니다.  
+아래 내용이 `/var/ossec/etc/ossec.conf`에 있는지 `sudo vim /var/ossec/etc/ossec.conf` 명령으로 확인해주세요.
+```xml
+<remote>
+  <connection>syslog</connection>
+  <port>514</port>
+  <protocol>udp</protocol>
+  <allowed-ips>172.16.30.1</allowed-ips>
+</remote>
+```
+
+확인 명령어:
+```bash
+grep -A 6 "syslog" /var/ossec/etc/ossec.conf
+```
+
+### 주의사항
+> **SSH 키 배포 필수** — 반드시 스크립트 실행 전 siem-01에서 pfSense로 SSH 키 배포가 된 상태여야 합니다.  
+> **pfSense SSH 활성화 확인** — pfSense 웹 콘솔에서 `System > Advanced > Admin Access > Secure Shell` 항목이 활성화되어 있는지 확인해주세요.  
+> **02-manager_json_process.sh 선행 필요** — ossec.conf에 Syslog 수신 설정이 없으면 스크립트가 중단됩니다. `02-manager_json_process.sh`를 먼저 실행해주세요.
+
+### 수신 확인 (siem-01에서)
+```bash
+# pfSense Syslog 수신 여부 실시간 확인
+sudo tcpdump -i any udp port 514
+```
+
+pfSense 로그가 출력되면 정상입니다.
+
+---
 ## 공통 설계 원칙
 **백업 우선**  
 모든 설정 파일 수정 전 타임스탬프 백업을 생성합니다.  
@@ -157,11 +272,8 @@ sudo ./03-indexer_store.sh
 
 **단계별 상태 확인**  
 각 스크립트는 실행 완료 후 포트 리스닝·서비스 상태·연결 확인 명령어를 출력합니다.
+오류 발생 시, `set -euo pipefail` 명령으로 즉시 스크립트를 종료할 수 있습니다.
 
 **`OK` / `ERROR` 출력 통일**  
 성공은 `OK...`, 실패는 `[ERROR]`로 구분해 로그를 파싱할 때 용이합니다.
-> *파싱: 크롤링한 정보 중 인간이 읽을 수 있고, 필요한 정보만 뽑는 것
-
-**`set -euo pipefail`**  
-오류 발생 즉시 스크립트를 종료합니다.  
-잘못된 설정이 다음 단계로 넘어가는 것을 방지합니다.
+> *파싱: 크롤링한 정보 중 인간이 읽을 수 있고, 필요한 정보만 뽑는 행위
