@@ -47,3 +47,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "onprem_cidr" {
+  description = "On-premises CIDR block for VPN access"
+  type        = string
+  default     = "172.16.0.0/12"
+}

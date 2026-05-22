@@ -56,6 +56,7 @@ module "ec2" {
   key_name        = module.keypair.key_name
   user_data       = var.user_data
   allowed_cidrs   = var.allowed_cidrs
+  onprem_cidr     = var.onprem_cidr_block
   create_ssm_role = false
   tags            = var.tags
 }
