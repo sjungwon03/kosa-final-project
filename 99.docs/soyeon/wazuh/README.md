@@ -1,13 +1,11 @@
 # Wazuh 통합 보안 관제 시스템
-
 Wazuh 기반 통합 보안 관제(SIEM) 환경에서 **로그 수집부터 Indexer 저장까지** 전 과정의 설정을 자동화한 스크립트 모음입니다.
-
 > Wazuh Manager·Agent 설치는 Ansible로 별도 진행됩니다.  
 > 이 레포지토리는 설치 이후 **로그 수집 정책 설정 및 데이터 흐름 구성**을 담당합니다.
 
 ---
 ## 아키텍처
-<img width="1887" height="1153" alt="Wazuh 전체 구조" src="https://github.com/user-attachments/assets/b86f1708-5b6c-4a08-a6e1-1a293187bb90" />
+<img width="1588" height="1374" alt="image" src="https://github.com/user-attachments/assets/827819c0-e0c9-42e8-b023-8e01b91aadd7" />
 
 | 컴포넌트 | 역할 | 포트 |
 |---|---|---|
@@ -18,7 +16,6 @@ Wazuh 기반 통합 보안 관제(SIEM) 환경에서 **로그 수집부터 Index
 
 ---
 ## 인프라 구성 (IP 목록)
-
 | 서버명 | IP | 역할 |
 |---|---|---|
 | siem-01 | 172.16.30.85 | Wazuh Manager, Indexer, Dashboard |
@@ -40,7 +37,6 @@ Wazuh 기반 통합 보안 관제(SIEM) 환경에서 **로그 수집부터 Index
 
 ---
 ## 데이터 흐름
-
 | ① Agent 수집 | ② Manager 정제 | ③ Indexer 저장 |
 |---|---|---|
 | 각 서버 로그 | 규칙 분석 후 JSON 경고문 생성 | OpenSearch에 날짜별 인덱스 자동 저장 |
@@ -48,7 +44,6 @@ Wazuh 기반 통합 보안 관제(SIEM) 환경에서 **로그 수집부터 Index
 
 ---
 ## 디렉토리 구조
-
 ```
 wazuh/
 ├── README.md                  # 이 파일
@@ -65,7 +60,6 @@ wazuh/
 ```
 
 ---
-
 ## 빠른 시작
 
 ### 통합 실행 (권장)
@@ -87,7 +81,6 @@ sudo ./03-indexer_store.sh
 ```
 
 ---
-
 ## 보안 정책 요약
 
 ### 알람 임계치
@@ -109,7 +102,6 @@ sudo ./03-indexer_store.sh
 `/var/log`, `/tmp`, `/proc`, `/sys`, `/dev`, `/etc/mtab` 등 변경이 잦은 경로
 
 ---
-
 ## 참고 문서
 > [Wazuh 공식 문서](https://documentation.wazuh.com)  
 > [ossec.conf 설정 가이드](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/)  
