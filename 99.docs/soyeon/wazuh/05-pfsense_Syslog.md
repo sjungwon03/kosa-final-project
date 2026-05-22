@@ -1,29 +1,27 @@
-# pfSense Syslog 설정  
-다음은 Wazuh Agent를 설치할 수 없는 pfSense(최전방 방화벽)의 로그를 **514/UDP Syslog**로 원격 수집 설정 과정입니다.
+# pfSense Syslog 설정
+다음은 Wazuh Agent를 설치할 수 없는 pfSense(최전방 방화벽)의 로그를 **514/UDP Syslog**로 원격 수집하는 설정 과정입니다.
 
 ---
-## 01) pfSense에 Agent를 설치하지 않는 이유  
+## 01) pfSense에 Agent를 설치하지 않는 이유
 pfSense는 실시간 패킷을 처리하는 방화벽 장비입니다.  
 외부 프로그램(Wazuh Agent)을 설치하면 커널 충돌이 발생할 수 있고,  
 이는 방화벽 마비 → 네트워크 전체 장애로 이어질 수 있습니다.  
-대신 pfSense가 기본 지원하는 **Syslog 원격 전송(514/UDP)** 으로 로그를 수집합니다.
-
-> 방화벽이 뚫리더라도 내부 19대 서버 전부 Agent가 설치되어 있어 위협(이상)을 탐지할 수 있습니다.
+대신 pfSense가 기본 지원하는 **Syslog 원격 전송(514/UDP)** 으로 로그를 수집합니다.  
+> 방화벽이 뚫리더라도 내부 10대 서버 전부 Agent가 설치되어 있어 위협(이상)을 탐지할 수 있습니다.
 
 ---
-## 02) 네트워크 구성 확인  
+## 02) 네트워크 구성 확인
 | 장비 | IP | 위치 |
 |---|---|---|
 | pfSense | 172.16.30.1 | VLAN30 게이트웨이 |
 | siem-01 (Wazuh Manager) | 172.16.30.85 | VLAN30 내부망 |
 
-pfSense가 siem-01(172.16.30.85)으로 Syslog를 전송할 때 목적지가 `172.16.30.x` 대역이므로 출발지 IP는 `172.16.30.1`입니다.  
-따라서 Manager의 `allowed-ips`는 `172.16.30.1` 하나만 허용합니다.  
-> 꼭 필요한 대상에게만 최소한의 접근 권한을 부여하는 최소 권한 원칙에 따라,  
-> Manager의 allowed-ips는 pfsense ip인 `172.16.30.1` 하나만 허용했습니다.
+> pfSense가 siem-01(172.16.30.85)으로 Syslog를 전송할 때 목적지가 `172.16.30.x` 대역이므로 출발지 IP는 `172.16.30.1`입니다.  
+> 따라서 Manager의 `allowed-ips`는 `172.16.30.1` 하나만 허용합니다.  
+> 이는 꼭 필요한 대상에게만 최소한의 접근 권한을 부여하는 **최소 권한 원칙**을 적용한 것입니다.
 
 ---
-## 03-1) pfSense Syslog 설정 방법 (UI)  
+## 03-1) pfSense Syslog 설정 방법 (Web UI)
 **1. pfSense 웹 콘솔 접속**
 ```
 https://172.16.30.1
@@ -35,7 +33,6 @@ Status > System Logs > Settings
 ```
 
 **3. Remote Logging Options 설정**
-
 | 항목 | 값 |
 |---|---|
 | Enable Remote Logging | ✔ 체크 |
@@ -54,16 +51,14 @@ Status > System Logs > Settings
 **5. Save 클릭**
 
 ---
-## 03-2) pfSense Syslog 설정 방법 (CLI)  
+## 03-2) pfSense Syslog 설정 방법 (CLI)
 **1. pfSense 접속 후 쉘 진입**  
 pfSense 메인 메뉴에서 `8` 입력 → 쉘(Shell) 진입
-
 ```
 Enter an option: 8
 ```
 
 **2. 원격 Syslog 설정 주입**
-
 ```bash
 # Wazuh Manager IP(172.16.30.85)로 모든 로그를 전송하도록 설정
 # config.xml에 원격 Syslog 서버 IP와 포트 주입
@@ -83,10 +78,9 @@ rm /tmp/config.cache
 /etc/rc.d/syslogd restart
 ```
 
-**3. siem-01 ossec.conf 수신 설정 확인**  
-쉘 스크립트 `02_manager_json_process.sh` 실행 시 자동으로 설정됩니다.  
-아래 내용이 `/var/ossec/etc/ossec.conf`에 있는지 확인해주세요.
-
+**3. siem-01 ossec.conf 수신 설정 확인**
+`02-manager_json_process.sh` 실행 시 자동으로 설정됩니다.  
+아래 내용이 `/var/ossec/etc/ossec.conf`에 있는지 확인하세요.
 ```xml
 <remote>
   <connection>syslog</connection>
@@ -102,10 +96,11 @@ grep -A 6 "syslog" /var/ossec/etc/ossec.conf
 ```
 
 ---
-## 04) 수신 확인 (siem-01에서)
 
+## 04) 수신 확인 (siem-01에서)
 ```bash
 # pfSense Syslog 수신 여부 실시간 확인
 sudo tcpdump -i any udp port 514
 ```
+
 이렇게 pfSense 로그가 출력되면 정상입니다.
