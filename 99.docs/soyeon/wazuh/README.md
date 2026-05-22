@@ -6,17 +6,18 @@
 
 ---
 ## 아키텍처
-<img width="1588" height="1374" alt="image" src="https://github.com/user-attachments/assets/827819c0-e0c9-42e8-b023-8e01b91aadd7" />
-
 | 컴포넌트 | 역할 | 포트 |
 |---|---|---|
 | Wazuh Agent | 각 서버 로그 수집 및 전송 | 1514 TCP (로그), 1515 TCP (등록) |
 | Wazuh Manager | 로그 수신·분석·JSON 경고문 생성 | 514 UDP (pfSense Syslog) |
 | Wazuh Indexer | JSON 데이터 저장 및 인덱싱 | 9200 TCP (RESTful API) |
 | Wazuh Dashboard | 보안 이벤트 시각화 및 모니터링 | 443 HTTPS |
+  
+<img width="656" alt="Wazuh 전체 구조2" src="https://github.com/user-attachments/assets/8c992296-7f60-41c8-9036-9f8bd0626c94" />
 
 ---
 ## 인프라 구성 (IP 목록)
+
 | 서버명 | IP | 역할 |
 |---|---|---|
 | siem-01 | 172.16.30.85 | Wazuh Manager, Indexer, Dashboard |
@@ -38,6 +39,7 @@
 
 ---
 ## 데이터 흐름
+
 | ① Agent 수집 | ② Manager 정제 | ③ Indexer 저장 |
 |---|---|---|
 | 각 서버 로그 | 규칙 분석 후 JSON 경고문 생성 | OpenSearch에 날짜별 인덱스 자동 저장 |
@@ -61,28 +63,59 @@ wazuh/
 ```
 
 ---
+## 초기 장애 조치 이력 (Troubleshooting Log)
+
+### ❌ 인덱서 및 매니저 서비스 구동 실패 (Timeout)
+* **원인**: systemd 제한 시간(90초) 초과로 인한 `wazuh-indexer` 및 `wazuh-manager` 서비스 타임아웃 발생. 강제 종료 후에도 좀비 파이썬/자바 프로세스가 메모리에 남아 포트 충돌을 유발함.
+* **해결**: 구동을 방해하는 잔재 프로세스를 완전히 소거하고 실패 이력을 초기화한 후 순차 재가동 완료.
+
+```bash
+# 1. 잔재 프로세스 및 좀비 데몬 강제 종료
+sudo pkill -9 -f wazuh
+sudo pkill -9 -f wazuh-indexer
+
+# 2. 실패 상태 초기화 및 재시작 (Indexer 가동 완료 확인 후 Manager 실행)
+sudo systemctl reset-failed wazuh-indexer wazuh-manager
+sudo systemctl start wazuh-indexer
+sudo systemctl start wazuh-manager
+sudo systemctl start wazuh-dashboard
+```
+
+---
 ## 빠른 시작
+
+### 작업 환경 구성 및 권한 부여
+자산 형상 관리 및 운영 스크립트 분리를 위해 홈 디렉터리에 전용 작업 폴더를 구성하고 실행 권한을 일괄 매핑합니다.
+```bash
+# 1. 전용 작업 디렉터리 및 리포트 폴더 생성
+mkdir -p ~/wazuh/reports
+
+# 2. 내부에 포함된 모든 운영 셸 스크립트에 실행 권한 일괄 부여
+chmod +x ~/wazuh/0*.sh
+
+# 3. 스크립트 디렉터리로 이동
+cd ~/wazuh
+```
 
 ### 통합 실행 (권장)
 ```bash
-sudo chmod +x *.sh
-sudo ./04-wazuh_all.sh
-sudo ./05-pfsense_syslog.md
+# 통합 실행 스크립트 가동 (01 -> 02 -> 03 파이프라인 자동 순차 실행)
+./04-wazuh_all.sh
 ```
 
 ### 단계별 실행
 ```bash
 # 1. Agent SSH 키 배포·등록·로그 수집 정책 설정 (10대 원격 일괄)
-sudo ./01-agent_log_collect.sh
+./01-agent_log_collect.sh
 
 # 2. Manager JSON 정제 설정
-sudo ./02-manager_json_process.sh
+./02-manager_json_process.sh
 
 # 3. Indexer 저장 설정
-sudo ./03-indexer_store.sh
+./03-indexer_store.sh
 
 # 4. pfsense_Syslog 로그 수집 정책 설정 (1대 원격)
-sudo ./05-pfsense_syslog.md
+cat 05-pfsense_syslog.md
 ```
 
 ---
@@ -108,6 +141,6 @@ sudo ./05-pfsense_syslog.md
 
 ---
 ## 참고 문서
-> [Wazuh 공식 문서](https://documentation.wazuh.com)  
-> [ossec.conf 설정 가이드](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/)  
-> [pfSense Agentless 설정](https://documentation.wazuh.com/current/user-manual/capabilities/agentless-monitoring/)
+> [Wazuh 공식 문서](https://wazuh.com)  
+> [ossec.conf 설정 가이드](https://wazuh.com/current/user-manual/reference/ossec-conf/)  
+> [pfSense Agentless 설정](https://wazuh.com/current/user-manual/capabilities/agentless-monitoring/)
