@@ -66,6 +66,7 @@ wazuh/
 ```bash
 sudo chmod +x *.sh
 sudo ./04-wazuh_all.sh
+sudo ./05-pfsense_syslog.md
 ```
 
 ### 단계별 실행
@@ -78,6 +79,9 @@ sudo ./02-manager_json_process.sh
 
 # 3. Indexer 저장 설정
 sudo ./03-indexer_store.sh
+
+# 4. pfsense_Syslog 로그 수집 정책 설정 (1대 원격)
+sudo ./05-pfsense_syslog.md
 ```
 
 ---
