@@ -6,7 +6,12 @@
 # [2026-05-13] 최초 작성
 # [2026-05-18] terraform init -reconfigure 추가 (backend 캐시 불일치 오류 대응)
 # [2026-05-18] -backend-config로 key 동적 주입 (서비스별 state 분리)
-# [2026-05-18] key 단일 파일로 복원 (prod/terraform.tfstate) — 역할별 분리 시 빈 state 참조 문제 발생
+# [2026-05-18] key 단일 파일로 복원 (prod/terraform.tfstate) - 역할별 분리 시 빈 state 참조 문제 발생
+# [2026-05-20] workspace/ 폴더 분리, 파일명 terraform-run.sh으로 변경, TARGET_DIR env/로 복원
+# [2026-05-20] 역할별 apply 시 자동 -target 추가 (타 역할 VM 파괴 방지)
+# [2026-05-20] local 백엔드 시 -backend-config key 생략 (local은 key 파라미터 미지원)
+# [2026-05-20] -reconfigure → -migrate-state -force-copy (S3 전환 후 input=false 충돌 해소)
+# [2026-05-20] MinIO 버킷 버저닝으로 state 보존 — 별도 백업 스크립트 불필요
 
 set -euo pipefail
 
@@ -46,7 +51,12 @@ fi
 cd "$TARGET_DIR"
 
 # 모듈 초기화 (-reconfigure: backend 캐시 불일치 시에도 state 보존하며 재초기화)
-terraform init -reconfigure -backend-config="key=${ENV}/terraform.tfstate" -input=false > /dev/null || { echo "ERROR: terraform init failed"; exit 1; }
+# local 백엔드는 -backend-config key 불필요 (S3 전용 옵션)
+if grep -q 'backend "local"' main.tf 2>/dev/null; then
+  terraform init -migrate-state -force-copy -input=false > /dev/null || { echo "ERROR: terraform init failed"; exit 1; }
+else
+  terraform init -migrate-state -force-copy -backend-config="key=${ENV}/terraform.tfstate" -input=false > /dev/null || { echo "ERROR: terraform init failed"; exit 1; }
+fi
 
 VAR_FILE="tfvars/${ROLE}.tfvars"
 if [ ! -f "$VAR_FILE" ]; then
@@ -59,7 +69,14 @@ fi
 CMD="terraform $ACTION -var-file=$VAR_FILE -parallelism=1"
 
 if [ -n "$TARGET_VM" ]; then
+  # 단일 VM 지정
   CMD="$CMD -target='module.vms.proxmox_virtual_environment_vm.ubuntu[\"$TARGET_VM\"]'"
+elif [[ "$ROLE" != "all" && "$ACTION" == "apply" ]]; then
+  # 역할별 apply: var-file에 있는 VM에만 -target 자동 추가 (타 역할 VM 보호)
+  # all.tfvars apply는 의도적 전체 배포이므로 제외
+  while IFS= read -r vm_name; do
+    CMD="$CMD -target='module.vms.proxmox_virtual_environment_vm.ubuntu[\"$vm_name\"]'"
+  done < <(grep -oE '"[a-z0-9_-]+" *= *\{' "$VAR_FILE" | grep -oE '"[a-z0-9_-]+"' | tr -d '"')
 fi
 
 START_TIME=$(date +%s)

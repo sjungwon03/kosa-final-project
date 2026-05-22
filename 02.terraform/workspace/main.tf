@@ -82,8 +82,11 @@ resource "proxmox_virtual_environment_vm" "ubuntu" {
     }
   }
 
-  # TODO: 배포된 VM에 protection 적용 방법 검토 후 활성화
-  # protection = each.value.protection
+  protection = try(each.value.protection, false)
+
+  lifecycle {
+    ignore_changes = [clone]
+  }
 
   agent {
     enabled = true
