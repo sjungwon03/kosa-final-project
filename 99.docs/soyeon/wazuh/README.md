@@ -70,22 +70,32 @@ wazuh/
 * **해결**: 구동을 방해하는 잔재 프로세스를 완전히 소거하고 실패 이력을 초기화한 후 순차 재가동 완료.
 
 ```bash
-# 1. 잔재 프로세스 및 좀비 데몬 강제 종료
-sudo pkill -9 -f wazuh
+# 1.프로세스 강제 검색 및 종료
 sudo pkill -9 -f wazuh-indexer
+sudo pkill -9 -f wazuh-manager
+sudo pkill -9 -f wazuh-dashboard
 
-# 2. 실패 상태 초기화 및 재시작 (Indexer 가동 완료 확인 후 Manager 실행)
-sudo systemctl reset-failed wazuh-indexer wazuh-manager
+# 2.실패 기록 리셋 및 서비스 재시작 (반드시 Indexer 가동 완료 확인 후 Manager 실행)
+sudo systemctl reset-failed wazuh-indexer
 sudo systemctl start wazuh-indexer
-sudo systemctl start wazuh-manager
+
+sudo systemctl reset-failed wazuh-manager
+sudo systemctl start wazuh-managerr
+
+sudo systemctl reset-failed wazuh-dashboard
 sudo systemctl start wazuh-dashboard
+
+# 3.상태 확인
+sudo systemctl status wazuh-indexer
+sudo systemctl status wazuh-manager
+sudo systemctl status wazuh-dashboard
 ```
 
 ---
 ## 빠른 시작
 
 ### 작업 환경 구성 및 권한 부여
-자산 형상 관리 및 운영 스크립트 분리를 위해 홈 디렉터리에 전용 작업 폴더를 구성하고 실행 권한을 일괄 매핑합니다.
+홈 디렉터리에 전용 작업 폴더를 구성한 뒤 실행 권한을 일괄 매핑해 쉘 스크립트를 실행해주세요.
 ```bash
 # 1. 전용 작업 디렉터리 및 리포트 폴더 생성
 mkdir -p ~/wazuh/reports
@@ -95,27 +105,9 @@ chmod +x ~/wazuh/0*.sh
 
 # 3. 스크립트 디렉터리로 이동
 cd ~/wazuh
-```
 
-### 통합 실행 (권장)
-```bash
-# 통합 실행 스크립트 가동 (01 -> 02 -> 03 파이프라인 자동 순차 실행)
-./04-wazuh_all.sh
-```
-
-### 단계별 실행
-```bash
-# 1. Agent SSH 키 배포·등록·로그 수집 정책 설정 (10대 원격 일괄)
-./01-agent_log_collect.sh
-
-# 2. Manager JSON 정제 설정
-./02-manager_json_process.sh
-
-# 3. Indexer 저장 설정
-./03-indexer_store.sh
-
-# 4. pfsense_Syslog 로그 수집 정책 설정 (1대 원격)
-cat 05-pfsense_syslog.md
+# 4. 통합 실행 스크립트 가동 (01 -> 02 -> 03 파이프라인 자동 순차 실행)
+./05-wazuh_all.sh
 ```
 
 ---
