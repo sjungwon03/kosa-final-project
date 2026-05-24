@@ -173,3 +173,27 @@ variable "cloudburst_threshold" {
   type        = number
   default     = 80
 }
+
+variable "enable_cloudfront" {
+  description = "Whether to enable CloudFront distribution"
+  type        = bool
+  default     = false
+}
+
+variable "enable_tls" {
+  description = "Whether to enable TLS on NLB with ACM certificate"
+  type        = bool
+  default     = true
+}
+
+variable "cloudfront_price_class" {
+  description = "CloudFront price class (PriceClass_100, PriceClass_200, PriceClass_All)"
+  type        = string
+  default     = "PriceClass_200"
+}
+
+variable "origin_protocol_policy" {
+  description = "Origin protocol policy (http-only, https-only, match-viewer)"
+  type        = string
+  default     = "http-only"
+}

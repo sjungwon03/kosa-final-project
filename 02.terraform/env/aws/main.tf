@@ -20,6 +20,12 @@ provider "aws" {
   profile = var.aws_profile
 }
 
+provider "aws" {
+  alias   = "us_east_1"
+  region  = "us-east-1"
+  profile = var.aws_profile
+}
+
 data "aws_availability_zones" "available" {
   state = "available"
 }
@@ -69,7 +75,10 @@ module "nlb" {
   subnet_ids          = module.vpc.public_subnet_ids
   target_instance_ids = module.ec2.instance_ids
   cross_zone_enabled  = true
+  certificate_arn     = var.enable_tls ? aws_acm_certificate_validation.nlb[0].certificate_arn : ""
   tags                = var.tags
+
+  depends_on = [aws_acm_certificate_validation.nlb]
 }
 
 module "route53" {
@@ -83,6 +92,37 @@ module "route53" {
   create_www_record = var.create_www_record
   enabled           = var.route53_enabled
   tags              = var.tags
+}
+
+resource "aws_acm_certificate" "nlb" {
+  count = var.enable_tls ? 1 : 0
+
+  domain_name       = var.record_name
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = var.tags
+}
+
+resource "aws_route53_record" "cert_validation_nlb" {
+  count = var.enable_tls ? 1 : 0
+
+  allow_overwrite = true
+  name            = tolist(aws_acm_certificate.nlb[0].domain_validation_options)[0].resource_record_name
+  records         = [tolist(aws_acm_certificate.nlb[0].domain_validation_options)[0].resource_record_value]
+  type            = tolist(aws_acm_certificate.nlb[0].domain_validation_options)[0].resource_record_type
+  zone_id         = module.route53.zone_id
+  ttl             = 60
+}
+
+resource "aws_acm_certificate_validation" "nlb" {
+  count = var.enable_tls ? 1 : 0
+
+  certificate_arn         = aws_acm_certificate.nlb[0].arn
+  validation_record_fqdns = [aws_route53_record.cert_validation_nlb[0].fqdn]
 }
 
 resource "aws_security_group" "eks_nodes" {

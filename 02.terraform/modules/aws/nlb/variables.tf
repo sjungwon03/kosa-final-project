@@ -29,3 +29,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "certificate_arn" {
+  description = "ACM certificate ARN for TLS termination"
+  type        = string
+  default     = ""
+}

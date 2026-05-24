@@ -20,9 +20,6 @@ frontend http_front
     bind *:80
     mode tcp
     
-    acl cloudburst_active acl_file(cloudburst_active.txt)
-    
-    use_backend eks_http if cloudburst_active
     default_backend onprem_http
 
 backend onprem_http
@@ -33,38 +30,11 @@ backend onprem_http
     server {{ server.name }} {{ server.ip }}:{{ server.port }} check inter 5s fall 3 rise 2 weight 100
 {% endfor %}
 
-backend eks_http
-    balance roundrobin
-    option tcp-check
-    tcp-check connect
-{% for server in eks_servers %}
-    server {{ server.name }} {{ server.ip }}:{{ server.port }} check inter 5s fall 3 rise 2 weight 100 init-addr libc,none
-{% endfor %}
-
 frontend https_front
     bind *:443
     mode tcp
     
-    acl cloudburst_active acl_file(cloudburst_active.txt)
-    
-    use_backend eks_https if cloudburst_active
-    default_backend onprem_https
-
-backend onprem_https
-    balance roundrobin
-    option tcp-check
-    tcp-check connect
-{% for server in onprem_servers_https %}
-    server {{ server.name }} {{ server.ip }}:{{ server.port }} check inter 5s fall 3 rise 2 weight 100
-{% endfor %}
-
-backend eks_https
-    balance roundrobin
-    option tcp-check
-    tcp-check connect
-{% for server in eks_servers_https %}
-    server {{ server.name }} {{ server.ip }}:{{ server.port }} check inter 5s fall 3 rise 2 weight 100 init-addr libc,none
-{% endfor %}
+    default_backend onprem_http
 
 listen stats
     bind *:{{ haproxy_stats_port }}

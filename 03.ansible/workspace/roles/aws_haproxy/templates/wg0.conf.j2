@@ -1,6 +1,6 @@
 [Interface]
 Address = {{ wireguard_client_ip }}
-PrivateKey = {{ lookup('file', '/etc/wireguard/private.key') }}
+PrivateKey = {{ wg_private_key_content }}
 
 [Peer]
 PublicKey = {{ vpn_server_public_key }}

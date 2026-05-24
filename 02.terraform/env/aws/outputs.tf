@@ -22,6 +22,16 @@ output "route53_name_servers" {
   value = module.route53.name_servers
 }
 
+output "acm_certificate_arn" {
+  value       = var.enable_tls ? aws_acm_certificate.nlb[0].arn : null
+  description = "ACM Certificate ARN for NLB TLS"
+}
+
+output "nlb_tls_url" {
+  value       = var.enable_tls ? "https://${var.record_name}" : null
+  description = "NLB TLS URL"
+}
+
 output "vpn_connection_id" {
   value       = var.customer_gateway_ip != "" ? module.site_to_site_vpn.vpn_connection_id : null
   description = "AWS VPN Connection ID"

@@ -1,18 +1,14 @@
 ---
+ansible_python_interpreter: /usr/bin/python3
+
 onprem_servers:
-  - name: onprem-app-1
-    ip: 172.16.30.100
-    port: 80
-  - name: onprem-app-2
-    ip: 172.16.30.101
+  - name: onprem-lb
+    ip: 172.16.30.205
     port: 80
 
 onprem_servers_https:
-  - name: onprem-app-1
-    ip: 172.16.30.100
-    port: 443
-  - name: onprem-app-2
-    ip: 172.16.30.101
+  - name: onprem-lb
+    ip: 172.16.30.205
     port: 443
 
 eks_servers:
