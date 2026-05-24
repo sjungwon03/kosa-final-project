@@ -12,12 +12,11 @@
 | Wazuh Manager | 로그 수신·분석·JSON 경고문 생성 | 514 UDP (pfSense Syslog) |
 | Wazuh Indexer | JSON 데이터 저장 및 인덱싱 | 9200 TCP (RESTful API) |
 | Wazuh Dashboard | 보안 이벤트 시각화 및 모니터링 | 443 HTTPS |
-  
-<img width="656" alt="Wazuh 전체 구조2" src="https://github.com/user-attachments/assets/8c992296-7f60-41c8-9036-9f8bd0626c94" />
+
+<img width="656" alt="Wazuh 전체 구조" src="https://github.com/user-attachments/assets/8c992296-7f60-41c8-9036-9f8bd0626c94" />
 
 ---
 ## 인프라 구성 (IP 목록)
-
 | 서버명 | IP | 역할 |
 |---|---|---|
 | siem-01 | 172.16.30.85 | Wazuh Manager, Indexer, Dashboard |
@@ -35,11 +34,10 @@
 
 > monitor-01(.90/.91), k8s-master-01(.30/.31)은 VM 1대에 IP가 2개 할당된 구조입니다.  
 > Agent는 VM당 1개 설치이므로 대표 IP 기준 총 10대입니다.  
-> pfSense는 커널 충돌 우려로 Agent 설치X → 대신 514/UDP Syslog로 로그 수집합니다.
+> pfSense는 커널 충돌 우려로 Agent 설치 제외 → 대신 514/UDP Syslog로 로그 수집합니다.
 
 ---
 ## 데이터 흐름
-
 | ① Agent 수집 | ② Manager 정제 | ③ Indexer 저장 |
 |---|---|---|
 | 각 서버 로그 | 규칙 분석 후 JSON 경고문 생성 | OpenSearch에 날짜별 인덱스 자동 저장 |
@@ -49,65 +47,41 @@
 ## 디렉토리 구조
 ```
 wazuh/
-├── README.md                  # 이 파일
-├── 00-wazuh_setup.md          # 각 스크립트 설계 의도 설명
-├── 01-agent_log_collect.sh    # SSH 키 배포·Agent 등록·로그 수집 정책 원격 주입 (10대)
-├── 02-manager_json_process.sh # Manager 로그 수신·JSON 정제 설정
-├── 03-indexer_store.sh        # Indexer 데이터 저장 설정 (Filebeat)
-├── 04-wazuh_all.sh            # 01~03 통합 실행
-├── 05-pfsense_syslog.md       # pfSense Agentless Syslog 설정 방법
-└── reports/
-    ├── 01-k8s.md              # k8s 취약점 분석·보완 방안·조치 결과 (마스터3·워커3·워커플렛1)
-    ├── 02-haproxy.md          # HAProxy 취약점 분석·보완 방안·조치 결과 (2대)
-    └── 03-monitor.md          # Monitor 취약점 분석·보완 방안·조치 결과 (1대)
-```
-
----
-## 초기 장애 조치 이력 (Troubleshooting Log)
-
-### ❌ 인덱서 및 매니저 서비스 구동 실패 (Timeout)
-* **원인**: systemd 제한 시간(90초) 초과로 인한 `wazuh-indexer` 및 `wazuh-manager` 서비스 타임아웃 발생. 강제 종료 후에도 좀비 파이썬/자바 프로세스가 메모리에 남아 포트 충돌을 유발함.
-* **해결**: 구동을 방해하는 잔재 프로세스를 완전히 소거하고 실패 이력을 초기화한 후 순차 재가동 완료.
-
-```bash
-# 1.프로세스 강제 검색 및 종료
-sudo pkill -9 -f wazuh-indexer
-sudo pkill -9 -f wazuh-manager
-sudo pkill -9 -f wazuh-dashboard
-
-# 2.실패 기록 리셋 및 서비스 재시작 (반드시 Indexer 가동 완료 확인 후 Manager 실행)
-sudo systemctl reset-failed wazuh-indexer
-sudo systemctl start wazuh-indexer
-
-sudo systemctl reset-failed wazuh-manager
-sudo systemctl start wazuh-managerr
-
-sudo systemctl reset-failed wazuh-dashboard
-sudo systemctl start wazuh-dashboard
-
-# 3.상태 확인
-sudo systemctl status wazuh-indexer
-sudo systemctl status wazuh-manager
-sudo systemctl status wazuh-dashboard
+├── README.md                   # 이 파일
+├── Wazuh_Setup.md              # 각 스크립트 설계 의도 설명
+├── 00-ssh_key_deploy.sh        # SSH 공개키 배포 (최초 1회 - 별도 실행)
+├── 01-agent_log_collect.sh     # Agent 등록·로그수집정책 원격주입 (10대)
+├── 02-manager_json_process.sh  # Manager 로그 수신·JSON 정제 설정
+├── 03-pfsense_syslog.sh        # pfSense Agentless Syslog 설정
+├── 04-indexer_store.sh         # Indexer 데이터 저장 설정 (Filebeat)
+├── 05-active_response.sh       # Active Response 자동 차단 설정
+├── 06-wazuh_all.sh             # 01~05 통합 실행
+└── config/
+    ├── config.yml              # Wazuh 인증서 발급용 노드 설정
+    └── certs/                  # 발급된 인증서 보관
 ```
 
 ---
 ## 빠른 시작
-
-### 작업 환경 구성 및 권한 부여
-홈 디렉터리에 전용 작업 폴더를 구성한 뒤 실행 권한을 일괄 매핑해 쉘 스크립트를 실행해주세요.
+### 사전 준비
 ```bash
-# 1. 전용 작업 디렉터리 및 리포트 폴더 생성
-mkdir -p ~/wazuh/reports
-
-# 2. 내부에 포함된 모든 운영 셸 스크립트에 실행 권한 일괄 부여
+# 1. 스크립트 실행 권한 부여
 chmod +x ~/wazuh/0*.sh
 
-# 3. 스크립트 디렉터리로 이동
+# 2. 작업 디렉터리로 이동
 cd ~/wazuh
+```
 
-# 4. 통합 실행 스크립트 가동 (01 -> 02 -> 03 파이프라인 자동 순차 실행)
-./05-wazuh_all.sh
+### SSH 공개키 배포 (최초 1회)
+```bash
+# 패스워드 방식 → 키 방식으로 전환 (최초 1회만 실행)
+./00-ssh_key_deploy.sh
+```
+
+### 통합 실행
+```bash
+# 01 → 02 → 03 → 04 → 05 순서 자동 실행
+./06-wazuh_all.sh
 ```
 
 ---
@@ -119,6 +93,14 @@ cd ~/wazuh
 | 1 ~ 2 | 일반 정보 | 미수집 |
 | 3 ~ 9 | 주의 단계 | 로그 저장 |
 | 10 이상 | 고위험 단계 | 즉시 알람 |
+
+### Active Response 차단 정책
+| 탐지 조건 | 차단 범위 | 자동 해제 | 룰 ID |
+|---|---|---|---|
+| SSH 브루트포스 | 해당 서버만 | 10분 후 | 5720 |
+| SSH 인증 반복 실패 | 해당 서버만 | 10분 후 | 5763 |
+| pfSense 포트스캔 | 전체 10대 | 30분 후 | 100201 |
+| OpenVPN 브루트포스 | 전체 10대 | 30분 후 | 100211 |
 
 ### FIM 감시 범위
 | 경로 | 대상 서버 |
@@ -134,5 +116,5 @@ cd ~/wazuh
 ---
 ## 참고 문서
 > [Wazuh 공식 문서](https://wazuh.com)  
-> [ossec.conf 설정 가이드](https://wazuh.com/current/user-manual/reference/ossec-conf/)  
-> [pfSense Agentless 설정](https://wazuh.com/current/user-manual/capabilities/agentless-monitoring/)
+> [ossec.conf 설정 가이드](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/)  
+> [pfSense Agentless 설정](https://documentation.wazuh.com/current/user-manual/capabilities/agentless-monitoring/)
