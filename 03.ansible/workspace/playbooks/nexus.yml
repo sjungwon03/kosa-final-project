@@ -1,0 +1,7 @@
+---
+- name: Nexus Repository Manager 구성
+  hosts: nexus
+  become: yes
+  roles:
+    - common
+    - nexus

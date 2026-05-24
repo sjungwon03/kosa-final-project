@@ -1,0 +1,17 @@
+. {
+    forward . {{ dns_forward_upstream }}
+    cache 30
+    log
+    errors
+}
+
+# 인프라 전용 로컬 도메인 설정 (etcd 기반)
+local {
+    etcd {
+        path /coredns
+        endpoint {% for host in groups['dns_servers'] %}http://{{ host }}:2379{% if not loop.last %} {% endif %}{% endfor %}
+    }
+    cache 30
+    log
+    errors
+}

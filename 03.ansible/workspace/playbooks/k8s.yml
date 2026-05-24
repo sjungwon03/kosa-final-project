@@ -53,6 +53,7 @@
       run_once: true
       when: ceph_storage_enabled_safe and ceph_csi_enabled_safe
 
+    # TODO: [폐쇄망 대비 임시 구성] 현재 외부 인터넷망에서 Helm 설치 스크립트를 직접 다운로드하므로, 운영 환경(폐쇄망)에서는 사전에 준비된 헬름 바이너리를 업로드하여 사용하도록 변경 필요함
     - name: Helm 설치 스크립트 다운로드
       ansible.builtin.get_url:
         url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
@@ -84,6 +85,7 @@
       run_once: true
       when: ceph_storage_enabled_safe and ceph_csi_enabled_safe
 
+    # TODO: [폐쇄망 대비 임시 구성] 현재 외부 인터넷 헬름 레포(https://ceph.github.io/csi-charts)를 직접 조회하므로, 운영 환경(폐쇄망)에서는 오프라인 차트 타르볼(.tgz) 사용 방식으로 전환해야 함
     - name: Ceph CSI Helm repo 추가
       ansible.builtin.command: "{{ ceph_helm_bin_safe }} repo add ceph-csi https://ceph.github.io/csi-charts"
       run_once: true
@@ -198,6 +200,7 @@
       run_once: true
       when: metallb_enabled_safe
 
+    # TODO: [폐쇄망 대비 임시 구성] 현재 외부 원격 매니페스트 URL(https://raw.githubusercontent.com/...)을 직접 조회해 적용하므로, 운영 환경(폐쇄망)에서는 해당 매니페스트 파일을 로컬에 적재 후 업로드 배포 방식으로 변경 필요함
     - name: MetalLB 네이티브 매니페스트 적용 (selector 충돌 시 재생성)
       block:
         - name: MetalLB 네이티브 매니페스트 적용

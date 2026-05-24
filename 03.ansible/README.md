@@ -3,25 +3,27 @@
 컨트롤 노드 VM 생성 및 Ansible 플레이북 관리
 
 **사용 목적**
+
 - 초기 구축: 소프트웨어 설치, 클러스터 초기화
 - 운영 자동화: 설정 변경, 노드 추가, 패치, 복구
 
 > 초기 구축(`playbooks/`)과 운영(`playbooks/ops/`)으로 구분 (문서 참고)
 
 문서 목록
+
 - [구축 가이드 (EXAMPLES.md)](./EXAMPLES.md)
 - [운영 가이드 (OPERATIONS.md)](./OPERATIONS.md)
 - [트러블슈팅 가이드 (TROUBLESHOOTING.md)](./TROUBLESHOOTING.md)
 
 **파이프라인 (실행 순서)**
 
-| 순서 | 폴더 | 내용 | 실행 위치 |
-|---|---|---|---|
-| 1 | 00.scripts | 베이스 템플릿(9000) 생성 | Proxmox 호스트 |
-| 2 | 01.packer | 공통 템플릿(9003, 9005) 생성 | 빌드 서버 |
-| 3 | **03.ansible** | **컨트롤 노드 VM 생성** | **Proxmox 호스트** |
-| 4 | 02.terraform | VM 프로비저닝 | 컨트롤 노드 |
-| 5 | **03.ansible** | **Ansible 플레이북 실행** | **컨트롤 노드** |
+| 순서 | 폴더           | 내용                         | 실행 위치          |
+| ---- | -------------- | ---------------------------- | ------------------ |
+| 1    | 00.scripts     | 베이스 템플릿(9000) 생성     | Proxmox 호스트     |
+| 2    | 01.packer      | 공통 템플릿(9003, 9005) 생성 | 빌드 서버          |
+| 3    | **03.ansible** | **컨트롤 노드 VM 생성**      | **Proxmox 호스트** |
+| 4    | 02.terraform   | VM 프로비저닝                | 컨트롤 노드        |
+| 5    | **03.ansible** | **Ansible 플레이북 실행**    | **컨트롤 노드**    |
 
 **디렉토리 구성**
 
@@ -82,49 +84,57 @@
 
 ### 스펙
 
-| 항목 | 값 |
-|---|---|
-| VM ID | 2210 |
-| 이름 | control |
-| 클론 소스 | 9003 (ubuntu-2404-common-v1) |
-| CPU | 2 cores / host |
-| 메모리 | 2048 MB |
-| 디스크 | 10G (rbd-storage) |
-| 네트워크 | virtio / vmbr0 / VLAN 30 (폐쇄망) |
-| 게이트웨이 | 172.16.30.1 |
-| IP | 172.16.30.7/24 |
-| 계정 | control |
+| 항목       | 값                                |
+| ---------- | --------------------------------- |
+| VM ID      | 2210                              |
+| 이름       | control                           |
+| 클론 소스  | 9003 (ubuntu-2404-common-v1)      |
+| CPU        | 2 cores / host                    |
+| 메모리     | 2048 MB                           |
+| 디스크     | 10G (rbd-storage)                 |
+| 네트워크   | virtio / vmbr0 / VLAN 30 (폐쇄망) |
+| 게이트웨이 | 172.16.30.1                       |
+| IP         | 172.16.30.7/24                    |
+| 계정       | control                           |
 
 ### 주요 스택
+
 cloud-init이 첫 부팅 시 자동 설치함. `control` 계정만 실행 가능함
 
-| 소프트웨어 | 용도 |
-|---|---|
-| Terraform | Proxmox VM 프로비저닝 |
-| Ansible | VM 구성 자동화 |
-| etcd | 분산 키-값 저장소 |
+| 소프트웨어 | 용도                  |
+| ---------- | --------------------- |
+| Terraform  | Proxmox VM 프로비저닝 |
+| Ansible    | VM 구성 자동화        |
+| etcd       | 분산 키-값 저장소     |
 
 ### 사전 조건
+
 - VMID 9003 (ubuntu-2404-common-v1) 템플릿 존재
 
 ### 변수 파일
+
 `.env.example` 복사 후 `CIPASSWORD` 수정
+
 ```bash
 cp .env.example .env
 ```
 
 ### SSH 공개키 등록
+
 사용자 공개키를 `workspace/keys/` 에 추가 후 스크립트 실행 시 자동 주입
+
 ```bash
 echo "ssh-ed25519 AAAA... user@laptop" > workspace/keys/name.pub
 ```
 
 ### 실행
+
 ```bash
 bash 03-create-control-node.sh
 ```
 
 ### 동작 순서
+
 1. 기존 VMID 2210 존재 시 자동 제거 (Ceph RBD 잔여 이미지 포함)
 2. cicustom 스니펫 생성
 3. VMID 9003 풀 클론 (1~3분 소요)
@@ -137,6 +147,7 @@ bash 03-create-control-node.sh
 7. 설치 완료 (총 5~10분 소요)
 
 ### 로그 확인
+
 ```bash
 # VM 생성 로그 (Proxmox 호스트)
 tail -f /var/log/create-control-node.log
@@ -147,6 +158,7 @@ cat /var/log/cloud-init-done.marker
 ```
 
 ### 완료 확인
+
 ```bash
 ssh control@172.16.30.7
 terraform version
@@ -162,10 +174,12 @@ etcd --version
 - 수정 사항 발생 시 수시로 실행하여 동기화
 
 ### 사전 조건
+
 - `03-create-control-node.sh` 실행 완료 (컨트롤 노드 생성 및 접속 가능 상태)
 - 로컬 `02.terraform` 및 `03.ansible/workspace` 내부 설정 완료
 
 ### 실행
+
 - 배포 시 `~/workspace/`는 유지하고 증분 동기화함
 - Terraform state 파일(`terraform.tfstate*`)은 동기화에서 제외되어 보존됨
 
@@ -204,12 +218,14 @@ bash 03.ansible/03-deploy-to-control.sh
 > 전체 예시는 [EXAMPLES.md](./EXAMPLES.md) 참조
 
 ### 0. 컨트롤 노드에 파일 배포
+
 ```bash
 # 로컬에서 실행
 bash 03.ansible/03-deploy-to-control.sh
 ```
 
 ### 1. Terraform으로 VM 생성
+
 ```bash
 # DNS 전용 생성
 bash ~/workspace/terraform/02-run.sh prod apply dns
@@ -233,10 +249,16 @@ rm -rf .terraform/ .terraform.lock.hcl
 
 ```bash
 # DNS 구성
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook -i ~/workspace/ansible/inventories/prod/hosts ~/workspace/ansible/playbooks/dns.yml
+ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg \
+  ansible-playbook \
+  -i ~/workspace/ansible/inventories/prod/hosts \
+  ~/workspace/ansible/playbooks/dns.yml
 
 # 전체 구성
-ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg ansible-playbook -i ~/workspace/ansible/inventories/prod/hosts ~/workspace/ansible/playbooks/site.yml
+ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg \
+  ansible-playbook \
+  -i ~/workspace/ansible/inventories/prod/hosts \
+  ~/workspace/ansible/playbooks/site.yml
 
 # 캐싱 제거
 rm -rf ~/.ansible/cp/*
@@ -245,11 +267,13 @@ rm -rf ~/.ansible/cp/*
 ### Ceph StorageClass 자동 적용 (k8s.yml)
 
 `playbooks/k8s.yml` 마지막 단계에서 아래 순서로 자동 적용합니다.
+
 1. Ceph CSI(RBD) Helm 차트 설치/업그레이드
 2. Ceph CSI Secret 생성
 3. `rbd-storage` StorageClass 생성
 
 설정 파일:
+
 - `workspace/group_vars/all.yml`
   - `ceph_csi_enabled`
   - `ceph_csi_chart_version`
@@ -260,7 +284,8 @@ rm -rf ~/.ansible/cp/*
   - `ceph_storage_enabled` (기본 `true`)
 
 현재 team4 기준 값:
-```yaml
+
+````yaml
 ceph_rbd_cluster_id: "861f6095-c334-413a-95a0-04e197f430c2"
 ceph_rbd_pool: "rbd-team4"
 ceph_csi_user_id: "team4-k8s-csi"   # ceph auth id는 client. 접두어 제외
@@ -288,23 +313,26 @@ ceph_csi_monitors:
 metallb_enabled: true
 metallb_address_pools:
   - "172.16.30.200-172.16.30.249"
-```
-  - "10.10.10.11:6789"
-  - "10.10.10.12:6789"
-  - "10.10.10.13:6789"
-  - "10.10.10.14:6789"
-  - "10.10.10.15:6789"
-  - "10.10.10.16:6789"
-```
+````
+
+- "10.10.10.11:6789"
+- "10.10.10.12:6789"
+- "10.10.10.13:6789"
+- "10.10.10.14:6789"
+- "10.10.10.15:6789"
+- "10.10.10.16:6789"
+
+````
 
 실행:
 ```bash
 ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg \
 ansible-playbook -i ~/workspace/ansible/inventories/prod/hosts \
 ~/workspace/ansible/playbooks/k8s.yml
-```
+````
 
 검증:
+
 ```bash
 kubectl get sc rbd-storage
 kubectl -n kube-system get secret ceph-csi-rbd-secret
@@ -312,45 +340,44 @@ kubectl -n kube-system get secret ceph-csi-rbd-secret
 
 ---
 
-
 ## 인프라 구성 명세
 
 ### 수동 구성
 
-| 호스트 | VM ID | VM name | IP | DNS | 주요 스택 |
-|---|---|---|---|---|---|
-| kosa21 | 2002 | pfSense  | 172.16.20.5  | firewall.edge.local | 방화벽, NAT, WireGuard VPN |
-| kosa21 | 2210 | Control  | 172.16.30.7  | ctrl.mgmt.local | Terraform, Ansible, etcd |
-| kosa24 | 2475 | Test/Sec | 172.16.30.75 | stress.mgmt.local | Kali Linux (k6, Locust 등) |
-
+| 호스트 | VM ID | VM name  | IP           | DNS                 | 주요 스택                  |
+| ------ | ----- | -------- | ------------ | ------------------- | -------------------------- |
+| kosa21 | 2105  | pfSense  | 172.16.20.5  | firewall.edge.local | 방화벽, NAT, WireGuard VPN |
+| kosa21 | 2207  | Control  | 172.16.30.7  | ctrl.mgmt.local     | Terraform, Ansible, etcd   |
+| kosa24 | 2475  | Test/Sec | 172.16.30.75 | stress.mgmt.local   | Kali Linux (k6, Locust 등) |
 
 ### 자동 구성 명세 (prod)
 
-| 호스트 | VM ID | VM name | IP | DNS 알리아스 | 주요 스택 | 스토리지 |
-|---|---|---|---|---|---|---|
-| - | - | DNS VIP | 172.16.30.10 | dns.svc.local    | Keepalived Float IP | - |
-| kosa22 | 2211 | dns-01      | 172.16.30.11 | dns-01.svc.local | Keepalived, CoreDNS, etcd | rbd-storage |
-| kosa23 | 2312 | dns-02      | 172.16.30.12 | dns-02.svc.local | Keepalived, CoreDNS, etcd | rbd-storage |
-| kosa24 | 2415 | nexus-01    | 172.16.30.15 | nexus.mgmt.local | Nexus (apt mirror, binary, docker registry) | rbd-storage |
-| - | - | Vault VIP | 172.16.30.20 | vault.sec.local | Keepalived Float IP | - |
-| kosa21 | 2121 | vault-01    | 172.16.30.21 | vault-01.sec.local | HashiCorp Vault/PKI, Raft | rbd-storage |
-| kosa24 | 2422 | vault-02    | 172.16.30.22 | vault-02.sec.local | HashiCorp Vault/PKI, Raft | rbd-storage |
-| - | - | Haproxy VIP | 172.16.20.25 | haproxy.svc.local | Keepalived | - |
-| kosa22 | 2226 | haproxy-01  | 172.16.20.26 | haproxy-01.svc.local | Keepalived, HAProxy | rbd-storage |
-| kosa23 | 2327 | haproxy-02  | 172.16.20.27 | haproxy-02.svc.local | Keepalived, HAProxy | rbd-storage |
-| - | - | k8s VIP     | 172.16.30.30 | - | - | - |
-| kosa21 | 2131 | k8s-master-01   | 172.16.30.31 | master-01.k8s.local | Keepalived, kubeadm | **local-lvm** |
-| kosa22 | 2232 | k8s-master-02   | 172.16.30.32 | master-02.k8s.local | Keepalived, kubeadm | **local-lvm** |
-| kosa23 | 2333 | k8s-master-03   | 172.16.30.33 | master-03.k8s.local | Keepalived, kubeadm | **local-lvm** |
-| kosa24 | 2440 | k8s-worker-plat | 172.16.30.40 | node-plat.k8s.local | Ingress, ArgoCD | rbd-storage |
-| kosa21 | 2145 | k8s-worker-01   | 172.16.30.45 | node-01.k8s.local | kubelet | rbd-storage |
-| kosa22 | 2246 | k8s-worker-02   | 172.16.30.46 | node-02.k8s.local | kubelet | rbd-storage |
-| kosa23 | 2347 | k8s-worker-03   | 172.16.30.47 | node-03.k8s.local | kubelet | rbd-storage |
-| kosa24 | 2455 | cicd-01         | 172.16.30.55 | gitea.mgmt.local | Gitea | rbd-storage |
-| kosa24 | 2470 | minio-01        | 172.16.30.70 | minio.mgmt.local | MinIO (Terraform Backend) | rbd-storage |
-| kosa22 | 2290 | siem-01         | 172.16.30.85 | siem.mgmt.local | Wazuh | rbd-storage |
-| - | - | PLG VIP     | 172.16.30.90 | - | - | - |
-| kosa23 | 2396 | monitor-01      | 172.16.30.91 | monitor.mgmt.local | PLG Stack | rbd-storage |
+| 호스트 | VM ID | VM name         | IP           | DNS 알리아스         | 주요 스택                  | 스토리지      |
+| ------ | ----- | --------------- | ------------ | -------------------- | -------------------------- | ------------- |
+| -      | -     | DNS VIP         | 172.16.30.10 | dns.svc.local        | Keepalived Float IP        | -             |
+| kosa22 | 2211  | dns-01          | 172.16.30.11 | dns-01.svc.local     | Keepalived, CoreDNS, etcd  | rbd-storage   |
+| kosa23 | 2312  | dns-02          | 172.16.30.12 | dns-02.svc.local     | Keepalived, CoreDNS, etcd  | rbd-storage   |
+| kosa24 | 2415  | nexus-01        | 172.16.30.15 | nexus.mgmt.local     | Nexus (apt mirror, binary) | rbd-storage   |
+| -      | -     | Vault VIP       | 172.16.30.20 | vault.sec.local      | Keepalived Float IP        | -             |
+| kosa21 | 2121  | vault-01        | 172.16.30.21 | vault-01.sec.local   | HashiCorp Vault/PKI, Raft  | rbd-storage   |
+| kosa24 | 2422  | vault-02        | 172.16.30.22 | vault-02.sec.local   | HashiCorp Vault/PKI, Raft  | rbd-storage   |
+| kosa23 | 2323  | vault-03        | 172.16.30.23 | vault-03.sec.local   | HashiCorp Vault/PKI, Raft  | rbd-storage   |
+| -      | -     | Haproxy VIP     | 172.16.20.25 | haproxy.svc.local    | Keepalived                 | -             |
+| kosa22 | 2226  | haproxy-01      | 172.16.20.26 | haproxy-01.svc.local | Keepalived, HAProxy        | rbd-storage   |
+| kosa23 | 2327  | haproxy-02      | 172.16.20.27 | haproxy-02.svc.local | Keepalived, HAProxy        | rbd-storage   |
+| -      | -     | k8s VIP         | 172.16.30.30 | -                    | -                          | -             |
+| kosa21 | 2131  | k8s-master-01   | 172.16.30.31 | master-01.k8s.local  | Keepalived, kubeadm        | **local-lvm** |
+| kosa22 | 2232  | k8s-master-02   | 172.16.30.32 | master-02.k8s.local  | Keepalived, kubeadm        | **local-lvm** |
+| kosa23 | 2333  | k8s-master-03   | 172.16.30.33 | master-03.k8s.local  | Keepalived, kubeadm        | **local-lvm** |
+| kosa24 | 2440  | k8s-worker-plat | 172.16.30.40 | node-plat.k8s.local  | Ingress, ArgoCD            | rbd-storage   |
+| kosa21 | 2145  | k8s-worker-01   | 172.16.30.45 | node-01.k8s.local    | kubelet                    | rbd-storage   |
+| kosa22 | 2246  | k8s-worker-02   | 172.16.30.46 | node-02.k8s.local    | kubelet                    | rbd-storage   |
+| kosa23 | 2347  | k8s-worker-03   | 172.16.30.47 | node-03.k8s.local    | kubelet                    | rbd-storage   |
+| kosa23 | 2355  | cicd-01         | 172.16.30.55 | cicd.mgmt.local      | GitLab, GitLab Runner      | rbd-storage   |
+| kosa24 | 2470  | minio-01        | 172.16.30.70 | minio.mgmt.local     | MinIO (Terraform Backend)  | rbd-storage   |
+| kosa22 | 2290  | siem-01         | 172.16.30.85 | siem.mgmt.local      | Wazuh                      | rbd-storage   |
+| -      | -     | PLG VIP         | 172.16.30.90 | -                    | -                          | -             |
+| kosa21 | 2196  | monitor-01      | 172.16.30.91 | monitor.mgmt.local   | PLG Stack                  | rbd-storage   |
 
 **VIP 리스트**
 | 서비스 | VIP | DNS 알리아스 | 비고 |
@@ -363,13 +390,12 @@ kubectl -n kube-system get secret ceph-csi-rbd-secret
 
 ### 자동 구성 명세 (test)
 
-| 호스트 | VM ID | VM name | IP | DNS 알리아스 | 주요 스택 | 스토리지 |
-|---|---|---|---|---|---|---|
-| kosa21 | 21200 | test-k8s-master-01 | 172.16.30.200 | test-master-01.k8s.local | test 마스터 노드 | **local-lvm** |
-| kosa23 | 23201 | test-k8s-master-02 | 172.16.30.201 | test-master-02.k8s.local | test 마스터 노드 | **local-lvm** |
-| kosa22 | 22205 | test-k8s-platform-01 | 172.16.30.205 | test-node-plat.k8s.local | test 플랫폼 워커 | rbd-storage |
-| kosa22 | 22207 | test-k8s-worker-01 | 172.16.30.207 | test-node-01.k8s.local | test 워커 노드 | rbd-storage |
-| kosa24 | 24209 | test-k8s-worker-02 | 172.16.30.209 | test-node-02.k8s.local | test 워커 노드 | rbd-storage |
-| kosa21 | 21210 | test-dns-01 | 172.16.30.210 | test-dns-01.svc.local | test DNS 서버 | rbd-storage |
-| kosa23 | 23211 | test-dns-02 | 172.16.30.211 | test-dns-02.svc.local | test DNS 서버 | rbd-storage |
-| kosa24 | 24215 | test-vault-01 | 172.16.30.215 | test-vault-01.sec.local | test 보안 서버 | rbd-storage |
+| 호스트 | VM ID | VM name         | IP            | DNS 알리아스             | 주요 스택        | 스토리지      |
+| ------ | ----- | --------------- | ------------- | ------------------------ | ---------------- | ------------- |
+| kosa21 | 12130 | k8s-master-01   | 172.16.30.130 | test-master-01.k8s.local | test 마스터 노드 | **local-lvm** |
+| kosa22 | 12231 | k8s-master-02   | 172.16.30.131 | test-master-02.k8s.local | test 마스터 노드 | **local-lvm** |
+| kosa24 | 12440 | k8s-worker-plat | 172.16.30.140 | test-node-plat.k8s.local | test 플랫폼 워커 | rbd-storage   |
+| kosa21 | 12141 | k8s-worker-01   | 172.16.30.141 | test-node-01.k8s.local   | test 워커 노드   | rbd-storage   |
+| kosa22 | 12242 | k8s-worker-02   | 172.16.30.142 | test-node-02.k8s.local   | test 워커 노드   | rbd-storage   |
+| kosa22 | 12211 | dns1            | 172.16.30.111 | test-dns-01.svc.local    | test DNS 서버    | rbd-storage   |
+| kosa21 | 12115 | vault1          | 172.16.30.121 | test-vault-01.sec.local  | test 보안 서버   | rbd-storage   |

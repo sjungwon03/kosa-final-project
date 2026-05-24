@@ -105,6 +105,15 @@ if [ -n "$COMPONENT" ]; then
       if [[ "$ACTION" == "install" ]]; then
         create_namespace "percona-db"
         install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db" "percona-db"
+        # pxc-operator CRD 등록 대기 후 pxc-db CR 재적용 (타이밍 이슈 방지)
+        echo "[$(date '+%F %T')] Waiting for pxc-operator to register CRDs..."
+        kubectl rollout status deployment/percona-db-pxc-operator -n percona-db --timeout=300s
+        echo "[$(date '+%F %T')] Re-applying pxc-db CR..."
+        helm upgrade percona-db "${MANIFESTS_DIR}/percona-db" \
+          --namespace "percona-db" \
+          -f "${MANIFESTS_DIR}/percona-db/values.yaml" \
+          --reset-values \
+          --timeout 600s
       else
         uninstall_helm_chart percona-db "percona-db"
       fi
@@ -118,11 +127,8 @@ if [ -n "$COMPONENT" ]; then
       fi
       ;;
     gitlab-operator)
-      if [[ "$ACTION" == "install" ]]; then
-        install_gitlab_operator
-      else
-        uninstall_gitlab_operator
-      fi
+      echo "ERROR: 'gitlab-operator' is managed by install-gitlab.sh. Use: ./scripts/install-gitlab.sh install"
+      exit 1
       ;;
     argocd)
       if [[ "$ACTION" == "install" ]]; then
@@ -147,7 +153,7 @@ else
     install_helm_chart gitea "${MANIFESTS_DIR}/gitea" "gitea"
     install_helm_chart percona-db "${MANIFESTS_DIR}/percona-db" "percona-db"
     install_helm_chart argocd "${MANIFESTS_DIR}/argocd" "argocd"
-    echo "[$(date '+%F %T')] NOTE: gitlab-operator is optional. Run '$0 install gitlab-operator' after setting GL_OPERATOR_VERSION/GL_OPERATOR_PLATFORM."
+    echo "[$(date '+%F %T')] NOTE: GitLab은 install-gitlab.sh로 별도 설치. cert-manager 선행 필요"
   else
     uninstall_helm_chart harbor "harbor"
     uninstall_helm_chart gitea "gitea"

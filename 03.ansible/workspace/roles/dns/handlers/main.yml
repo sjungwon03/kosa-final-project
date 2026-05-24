@@ -1,0 +1,20 @@
+---
+- name: restart systemd-resolved
+  systemd:
+    name: systemd-resolved
+    state: restarted
+
+- name: restart coredns
+  systemd:
+    name: coredns
+    state: restarted
+
+- name: restart etcd
+  systemd:
+    name: etcd
+    state: restarted
+
+- name: restart keepalived
+  systemd:
+    name: keepalived
+    state: restarted

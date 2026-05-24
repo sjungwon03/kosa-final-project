@@ -18,7 +18,7 @@ pxc-db:
     autoRecovery: true
     persistence:
       enabled: true
-      storageClass: ceph-rbd
+      storageClass: rbd-storage
       size: 20Gi
     affinity:
       podAntiAffinity:

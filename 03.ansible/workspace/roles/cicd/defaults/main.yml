@@ -1,0 +1,20 @@
+---
+gitea_version: "1.21.11"
+gitea_user: git
+gitea_home: /home/git
+gitea_work_dir: /var/lib/gitea
+gitea_custom_dir: /etc/gitea
+gitea_port: 3000
+gitea_ssh_port: 22
+gitea_domain: "cicd.mgmt.local"
+gitea_db_type: sqlite3
+
+# TODO: 폐쇄망 — 바이너리를 인터넷 머신에서 다운로드 후 roles/cicd/files/gitea에 저장
+# 현재: GitHub 직접 다운로드 (인터넷 접근 가능한 초기 구축 단계에서만 동작)
+gitea_binary_url: "https://github.com/go-gitea/gitea/releases/download/v{{ gitea_version }}/gitea-{{ gitea_version }}-linux-amd64"
+
+act_runner_version: "0.2.10"
+act_runner_name: "control-runner"
+act_runner_labels: "ubuntu-latest:docker://node:20-bullseye"
+# TODO: 폐쇄망 — act_runner 바이너리 동일하게 사전 배포 필요
+act_runner_binary_url: "https://gitea.com/gitea/act_runner/releases/download/v{{ act_runner_version }}/act_runner-{{ act_runner_version }}-linux-amd64"

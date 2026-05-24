@@ -10,8 +10,14 @@ dns_keepalived_router_id: 10
 dns_keepalived_auth_pass: "kosa1234"
 
 # CoreDNS 설정
-dns_forward_upstream: "8.8.8.8 8.8.4.4"
+# 폐쇄망 전환 시 pfSense VLAN 30 게이트웨이(172.16.30.1)로 유지
+dns_forward_upstream: "172.16.30.1"
 dns_domain: "mgmt.local"
+
+# 바이너리 다운로드 방식
+# - 인터넷 연결 시: 비워두면 GitHub에서 직접 다운로드
+# - 폐쇄망 전환 시: MinIO URL로 설정 (예: http://172.16.30.70/binaries)
+binary_mirror_url: ""
 
 # 기본 DNS 레코드 (group_vars/dns_servers.yml에서 override)
 dns_records: []

@@ -352,16 +352,28 @@ terraform.rc
 *.pkrvars.hcl
 credentials.pkr.hcl
 ansible.pub
+packer_cache/
 
 # Terraform 인증 정보
-credentials.auto.tfvars
+*.auto.tfvars
 
 # Ansible 인증서 (환경별 민감 정보)
 03.ansible/workspace/inventories/*/certs/
 !03.ansible/workspace/inventories/*/certs/.gitkeep
 
+# Ansible vault 패스워드 파일
+.vault_pass
+vault_password_file
+
 # Ansible env
 03.ansible/.env
+
+# SSH 개인키
+*.pem
+id_rsa
+id_ed25519
+*.key
+!*.pub
 
 # LLM
 CLAUDE.md
