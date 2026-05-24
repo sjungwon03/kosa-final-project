@@ -14,3 +14,272 @@
   hosts: k8s_workers
   roles:
     - k8s_worker
+
+- name: Ceph RBD StorageClass 적용
+  hosts: k8s_masters
+  become: false
+  gather_facts: false
+  vars:
+    ceph_storage_enabled_safe: "{{ ceph_storage_enabled | default(false) | bool }}"
+    ceph_csi_enabled_safe: "{{ ceph_csi_enabled | default(false) | bool }}"
+    ceph_helm_bin_safe: "{{ ceph_helm_bin | default('/usr/local/bin/helm') }}"
+    ceph_csi_release_name_safe: "{{ ceph_csi_release_name | default('ceph-csi-rbd') }}"
+    ceph_csi_namespace_safe: "{{ ceph_csi_namespace | default('kube-system') }}"
+    ceph_csi_chart_version_safe: "{{ ceph_csi_chart_version | default('3.13.0') }}"
+    ceph_rbd_cluster_id_safe: "{{ ceph_rbd_cluster_id | default('') }}"
+    ceph_rbd_pool_safe: "{{ ceph_rbd_pool | default('rbd-team4') }}"
+    ceph_csi_secret_namespace_safe: "{{ ceph_csi_secret_namespace | default('kube-system') }}"
+    ceph_csi_secret_name_safe: "{{ ceph_csi_secret_name | default('ceph-csi-rbd-secret') }}"
+    ceph_csi_user_id_safe: "{{ ceph_csi_user_id | default('') }}"
+    ceph_csi_user_key_safe: "{{ ceph_csi_user_key | default('') }}"
+    ceph_rbd_storageclass_name_safe: "{{ ceph_rbd_storageclass_name | default('rbd-storage') }}"
+    ceph_csi_monitors_safe: "{{ ceph_csi_monitors | default([]) }}"
+  tasks:
+    - name: Ceph CSI 필수 변수 검증
+      ansible.builtin.assert:
+        that:
+          - ceph_rbd_cluster_id_safe | length > 0
+          - ceph_csi_user_id_safe | length > 0
+          - ceph_csi_user_key_safe | length > 0
+          - ceph_csi_monitors_safe | length > 0
+        fail_msg: "Ceph CSI 필수 값(cluster_id, user_id, user_key, monitors)이 비어 있습니다."
+      run_once: true
+      when: ceph_storage_enabled_safe
+
+    - name: Helm 바이너리 존재 확인
+      ansible.builtin.stat:
+        path: "{{ ceph_helm_bin_safe }}"
+      register: ceph_helm_stat
+      run_once: true
+      when: ceph_storage_enabled_safe and ceph_csi_enabled_safe
+
+    # TODO: [폐쇄망 대비 임시 구성] 현재 외부 인터넷망에서 Helm 설치 스크립트를 직접 다운로드하므로, 운영 환경(폐쇄망)에서는 사전에 준비된 헬름 바이너리를 업로드하여 사용하도록 변경 필요함
+    - name: Helm 설치 스크립트 다운로드
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        dest: /tmp/get-helm-3.sh
+        mode: "0755"
+      run_once: true
+      when:
+        - ceph_storage_enabled_safe
+        - ceph_csi_enabled_safe
+        - not ceph_helm_stat.stat.exists
+
+    - name: Helm 설치 실행
+      ansible.builtin.command: /tmp/get-helm-3.sh
+      become: true
+      run_once: true
+      when:
+        - ceph_storage_enabled_safe
+        - ceph_csi_enabled_safe
+        - not ceph_helm_stat.stat.exists
+
+    - name: Ceph CSI Helm values manifest 생성
+      ansible.builtin.copy:
+        dest: /tmp/ceph-csi-rbd-values.yaml
+        mode: "0644"
+        content: |
+          csiConfig:
+            - clusterID: {{ ceph_rbd_cluster_id_safe }}
+              monitors: {{ ceph_csi_monitors_safe }}
+      run_once: true
+      when: ceph_storage_enabled_safe and ceph_csi_enabled_safe
+
+    # TODO: [폐쇄망 대비 임시 구성] 현재 외부 인터넷 헬름 레포(https://ceph.github.io/csi-charts)를 직접 조회하므로, 운영 환경(폐쇄망)에서는 오프라인 차트 타르볼(.tgz) 사용 방식으로 전환해야 함
+    - name: Ceph CSI Helm repo 추가
+      ansible.builtin.command: "{{ ceph_helm_bin_safe }} repo add ceph-csi https://ceph.github.io/csi-charts"
+      run_once: true
+      changed_when: false
+      failed_when: false
+      when: ceph_storage_enabled_safe and ceph_csi_enabled_safe
+
+    - name: Ceph CSI Helm repo 업데이트
+      ansible.builtin.command: "{{ ceph_helm_bin_safe }} repo update"
+      run_once: true
+      when: ceph_storage_enabled_safe and ceph_csi_enabled_safe
+
+    - name: Ceph CSI RBD 설치/업그레이드
+      ansible.builtin.command: >
+        {{ ceph_helm_bin_safe }} upgrade --install {{ ceph_csi_release_name_safe }} ceph-csi/ceph-csi-rbd
+        -n {{ ceph_csi_namespace_safe }}
+        --version {{ ceph_csi_chart_version_safe }}
+        -f /tmp/ceph-csi-rbd-values.yaml
+      run_once: true
+      when: ceph_storage_enabled_safe and ceph_csi_enabled_safe
+
+    - name: Ceph CSI Secret manifest 생성
+      ansible.builtin.copy:
+        dest: /tmp/ceph-csi-rbd-secret.yaml
+        mode: "0600"
+        content: |
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: {{ ceph_csi_secret_name_safe }}
+            namespace: {{ ceph_csi_secret_namespace_safe }}
+          type: kubernetes.io/opaque
+          stringData:
+            userID: "{{ ceph_csi_user_id_safe }}"
+            userKey: "{{ ceph_csi_user_key_safe }}"
+      run_once: true
+      when: ceph_storage_enabled_safe
+
+    - name: Ceph RBD StorageClass manifest 생성
+      ansible.builtin.copy:
+        dest: /tmp/ceph-rbd-storageclass.yaml
+        mode: "0644"
+        content: |
+          apiVersion: storage.k8s.io/v1
+          kind: StorageClass
+          metadata:
+            name: {{ ceph_rbd_storageclass_name_safe }}
+            annotations:
+              storageclass.kubernetes.io/is-default-class: "true"
+          provisioner: rbd.csi.ceph.com
+          allowVolumeExpansion: true
+          reclaimPolicy: Delete
+          volumeBindingMode: Immediate
+          parameters:
+            clusterID: {{ ceph_rbd_cluster_id_safe }}
+            pool: {{ ceph_rbd_pool_safe }}
+            imageFeatures: layering
+            csi.storage.k8s.io/provisioner-secret-name: {{ ceph_csi_secret_name_safe }}
+            csi.storage.k8s.io/provisioner-secret-namespace: {{ ceph_csi_secret_namespace_safe }}
+            csi.storage.k8s.io/controller-expand-secret-name: {{ ceph_csi_secret_name_safe }}
+            csi.storage.k8s.io/controller-expand-secret-namespace: {{ ceph_csi_secret_namespace_safe }}
+            csi.storage.k8s.io/node-stage-secret-name: {{ ceph_csi_secret_name_safe }}
+            csi.storage.k8s.io/node-stage-secret-namespace: {{ ceph_csi_secret_namespace_safe }}
+      run_once: true
+      when: ceph_storage_enabled_safe
+
+    - name: Ceph CSI Secret 적용
+      ansible.builtin.command: kubectl apply -f /tmp/ceph-csi-rbd-secret.yaml
+      run_once: true
+      when: ceph_storage_enabled_safe
+
+    - name: Ceph CSI provisioner 재시작 (secret/config 재로딩)
+      ansible.builtin.command: kubectl -n {{ ceph_csi_namespace_safe }} rollout restart deploy/{{ ceph_csi_release_name_safe }}-provisioner
+      run_once: true
+      when: ceph_storage_enabled_safe and ceph_csi_enabled_safe
+
+    - name: Ceph CSI provisioner rollout 대기
+      ansible.builtin.command: kubectl -n {{ ceph_csi_namespace_safe }} rollout status deploy/{{ ceph_csi_release_name_safe }}-provisioner --timeout=300s
+      run_once: true
+      when: ceph_storage_enabled_safe and ceph_csi_enabled_safe
+
+    - name: 기존 StorageClass 제거 (옵션 변경 반영)
+      ansible.builtin.command: kubectl delete sc {{ ceph_rbd_storageclass_name_safe }} --ignore-not-found=true
+      run_once: true
+      changed_when: false
+      when: ceph_storage_enabled_safe
+
+    - name: Ceph RBD StorageClass 적용
+      ansible.builtin.command: kubectl apply -f /tmp/ceph-rbd-storageclass.yaml
+      run_once: true
+      when: ceph_storage_enabled_safe
+
+- name: MetalLB 설치 및 IPAddressPool 적용
+  hosts: k8s_masters
+  become: false
+  gather_facts: false
+  vars:
+    metallb_enabled_safe: "{{ metallb_enabled | default(false) | bool }}"
+    metallb_namespace_safe: "{{ metallb_namespace | default('metallb-system') }}"
+    metallb_manifest_url_safe: "{{ metallb_manifest_url | default('https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml') }}"
+    metallb_ipaddresspool_name_safe: "{{ metallb_ipaddresspool_name | default('primary-pool') }}"
+    metallb_l2advertisement_name_safe: "{{ metallb_l2advertisement_name | default('primary-l2adv') }}"
+    metallb_address_pools_safe: "{{ metallb_address_pools | default([]) }}"
+    metallb_auto_assign_safe: "{{ metallb_auto_assign | default(true) | bool }}"
+    metallb_avoid_buggy_ips_safe: "{{ metallb_avoid_buggy_ips | default(true) | bool }}"
+  tasks:
+    - name: MetalLB 주소 풀 설정 검증
+      ansible.builtin.assert:
+        that:
+          - metallb_address_pools_safe | length > 0
+        fail_msg: "metallb_address_pools 값을 1개 이상 설정해 주세요."
+      run_once: true
+      when: metallb_enabled_safe
+
+    # TODO: [폐쇄망 대비 임시 구성] 현재 외부 원격 매니페스트 URL(https://raw.githubusercontent.com/...)을 직접 조회해 적용하므로, 운영 환경(폐쇄망)에서는 해당 매니페스트 파일을 로컬에 적재 후 업로드 배포 방식으로 변경 필요함
+    - name: MetalLB 네이티브 매니페스트 적용 (selector 충돌 시 재생성)
+      block:
+        - name: MetalLB 네이티브 매니페스트 적용
+          ansible.builtin.command: "kubectl apply -f {{ metallb_manifest_url_safe }}"
+          run_once: true
+          when: metallb_enabled_safe
+      rescue:
+        - name: MetalLB controller/speaker 삭제 (immutable selector 충돌 복구)
+          ansible.builtin.command: >
+            kubectl -n {{ metallb_namespace_safe }} delete deploy/controller ds/speaker --ignore-not-found=true
+          run_once: true
+          when: metallb_enabled_safe
+
+        - name: MetalLB 네이티브 매니페스트 재적용
+          ansible.builtin.command: "kubectl apply -f {{ metallb_manifest_url_safe }}"
+          run_once: true
+          when: metallb_enabled_safe
+
+    - name: MetalLB controller rollout 대기
+      ansible.builtin.command: "kubectl -n {{ metallb_namespace_safe }} rollout status deploy/controller --timeout=300s"
+      run_once: true
+      when: metallb_enabled_safe
+
+    - name: MetalLB speaker rollout 대기
+      ansible.builtin.command: "kubectl -n {{ metallb_namespace_safe }} rollout status ds/speaker --timeout=300s"
+      run_once: true
+      register: metallb_speaker_rollout
+      failed_when: false
+      changed_when: metallb_speaker_rollout.rc == 0
+      when: metallb_enabled_safe
+
+    - name: MetalLB speaker rollout 경고 출력
+      ansible.builtin.debug:
+        msg: "MetalLB speaker rollout did not fully complete within timeout. current output: {{ metallb_speaker_rollout.stdout | default('') }}"
+      run_once: true
+      when:
+        - metallb_enabled_safe
+        - metallb_speaker_rollout is defined
+        - metallb_speaker_rollout.rc != 0
+
+    - name: MetalLB IPAddressPool manifest 생성
+      ansible.builtin.copy:
+        dest: /tmp/metallb-ipaddresspool.yaml
+        mode: "0644"
+        content: |
+          apiVersion: metallb.io/v1beta1
+          kind: IPAddressPool
+          metadata:
+            name: {{ metallb_ipaddresspool_name_safe }}
+            namespace: {{ metallb_namespace_safe }}
+          spec:
+            addresses: {{ metallb_address_pools_safe | to_json }}
+            autoAssign: {{ metallb_auto_assign_safe | lower }}
+            avoidBuggyIPs: {{ metallb_avoid_buggy_ips_safe | lower }}
+      run_once: true
+      when: metallb_enabled_safe
+
+    - name: MetalLB L2Advertisement manifest 생성
+      ansible.builtin.copy:
+        dest: /tmp/metallb-l2advertisement.yaml
+        mode: "0644"
+        content: |
+          apiVersion: metallb.io/v1beta1
+          kind: L2Advertisement
+          metadata:
+            name: {{ metallb_l2advertisement_name_safe }}
+            namespace: {{ metallb_namespace_safe }}
+          spec:
+            ipAddressPools:
+              - {{ metallb_ipaddresspool_name_safe }}
+      run_once: true
+      when: metallb_enabled_safe
+
+    - name: MetalLB IPAddressPool 적용
+      ansible.builtin.command: kubectl apply -f /tmp/metallb-ipaddresspool.yaml
+      run_once: true
+      when: metallb_enabled_safe
+
+    - name: MetalLB L2Advertisement 적용
+      ansible.builtin.command: kubectl apply -f /tmp/metallb-l2advertisement.yaml
+      run_once: true
+      when: metallb_enabled_safe

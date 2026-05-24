@@ -14,6 +14,11 @@
 # [2026-05-12] etcd GitHub 바이너리 설치로 변경, runcmd 멀티라인 블록으로 변수 유지, groupadd control 추가
 # [2026-05-12] etcdkeeper 제거
 # [2026-05-12] 버전 고정: terraform=1.15.2, etcd=v3.6.11 / serial0 제거 및 vga=std 복원
+# [2026-05-12] cicustom user= → vendor=: user=는 --ciuser/--cipassword를 덮어써 control 계정 미생성 문제 수정
+# [2026-05-12] keys/*.pub 수집 후 --sshkeys로 주입: 팀원 공개키 일괄 등록
+# [2026-05-12] 버전 변수 상단 분리 (TERRAFORM_VER, ETCD_VER), ssh_pwauth: true 추가
+# [2026-05-12] qm destroy 후 Ceph RBD 잔여 이미지 강제 정리 추가
+# [2026-05-12] cloud-init 완료 대기 루프 추가 (marker 파일 확인, 최대 10분)
 
 # -e: 명령어 실패 시 즉시 종료 / -u: 미선언 변수 사용 시 오류 / -o pipefail: 파이프 중간 실패도 오류 처리
 set -euo pipefail
@@ -33,39 +38,69 @@ echo "[$(date '+%F %T')] start"
 
 trap 'echo "[$(date +%F\ %T)] failed at line ${LINENO}: ${BASH_COMMAND}" >&2' ERR
 
+# TODO: 버전 존재 여부 확인 필요 — apt-cache madison terraform (동일 OS에서 실행)
+TERRAFORM_VER="1.15.2-1"
+ETCD_VER="v3.6.11"
+
 SNIPPET_DIR="/var/lib/vz/snippets"
 SNIPPET_FILE="${SNIPPET_DIR}/control-node-userdata.yaml"
+KEYS_DIR="${SCRIPT_DIR}/workspace/keys"
+SSH_KEYS_FILE="$(mktemp)"
+trap 'rm -f "${SSH_KEYS_FILE}"' EXIT
+
+# keys/*.pub 수집
+if ls "${KEYS_DIR}"/*.pub &>/dev/null; then
+  cat "${KEYS_DIR}"/*.pub > "${SSH_KEYS_FILE}"
+  echo "[INFO] SSH keys: $(wc -l < "${SSH_KEYS_FILE}") key(s) found"
+else
+  echo "[WARN] ${KEYS_DIR}/*.pub 없음 — SSH 키 없이 진행 (비밀번호 인증만 가능)"
+fi
 
 # 기존 VM 정리
 if qm status "${CONTROL_VMID}" &>/dev/null; then
   echo "VMID ${CONTROL_VMID} exists, purging..."
+  qm stop "${CONTROL_VMID}" --skiplock 2>/dev/null || true
+  sleep 3
   qm destroy "${CONTROL_VMID}" --purge
 fi
+
+# Ceph RBD 잔여 이미지 정리 (qm destroy --purge가 누락할 수 있음)
+for img in "vm-${CONTROL_VMID}-disk-0" "vm-${CONTROL_VMID}-cloudinit"; do
+  if rbd ls "${STORAGE_POOL}" 2>/dev/null | grep -qx "${img}"; then
+    echo "Removing orphaned RBD image: ${STORAGE_POOL}/${img}"
+    rbd rm "${STORAGE_POOL}/${img}"
+  fi
+done
 
 # cicustom 스니펫 생성 (호스트명 설정, cloud-init 완료 후 자동 종료)
 pvesm set local --content vztmpl,iso,snippets
 mkdir -p "${SNIPPET_DIR}"
 cat > "${SNIPPET_FILE}" <<EOF
 #cloud-config
-hostname: ${CONTROL_NAME}
+ssh_pwauth: true
+write_files:
+  - path: /etc/ssh/sshd_config.d/10-password-auth.conf
+    content: |
+      PasswordAuthentication yes
+      KbdInteractiveAuthentication yes
 runcmd:
+  - systemctl enable --now ssh
   # HashiCorp APT 저장소 추가 후 Terraform, Ansible 설치
   - wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
   - echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com noble main" | tee /etc/apt/sources.list.d/hashicorp.list
-  - apt-get update && apt-get install -y terraform=1.15.2-1 ansible
+  - apt-get update && apt-get install -y terraform=${TERRAFORM_VER} ansible
   # etcd (Ubuntu 24.04 기본 저장소 미포함 → GitHub 바이너리)
   - |
-    ETCD_VER="v3.6.11"
-    curl -L "https://github.com/etcd-io/etcd/releases/download/\${ETCD_VER}/etcd-\${ETCD_VER}-linux-amd64.tar.gz" -o /tmp/etcd.tar.gz
+    curl -L "https://github.com/etcd-io/etcd/releases/download/${ETCD_VER}/etcd-${ETCD_VER}-linux-amd64.tar.gz" -o /tmp/etcd.tar.gz
     tar -xzf /tmp/etcd.tar.gz -C /tmp/
-    mv /tmp/etcd-\${ETCD_VER}-linux-amd64/etcd /usr/local/bin/
-    mv /tmp/etcd-\${ETCD_VER}-linux-amd64/etcdctl /usr/local/bin/
-    rm -rf /tmp/etcd.tar.gz /tmp/etcd-\${ETCD_VER}-linux-amd64
+    mv /tmp/etcd-${ETCD_VER}-linux-amd64/etcd /usr/local/bin/
+    mv /tmp/etcd-${ETCD_VER}-linux-amd64/etcdctl /usr/local/bin/
+    rm -rf /tmp/etcd.tar.gz /tmp/etcd-${ETCD_VER}-linux-amd64
   # control 그룹 생성 및 Terraform/Ansible 실행 권한 설정
   - groupadd -f control
   - chown root:control /usr/bin/terraform && chmod 750 /usr/bin/terraform
   - find /usr/bin -name 'ansible*' -exec chown root:control {} \; -exec chmod 750 {} \;
-  - echo "[cloud-init] done"
+  - echo "[cloud-init] done" | tee /var/log/cloud-init-done.marker
 # TODO: 검증 완료 후 자동 종료 필요 시 아래 주석 해제
 # power_state:
 #   mode: poweroff
@@ -96,11 +131,19 @@ qm set "${CONTROL_VMID}" \
   --cipassword "${CIPASSWORD}" \
   --nameserver "8.8.8.8 1.1.1.1"
 
+# SSH 공개키 주입 (keys/*.pub)
+if [[ -s "${SSH_KEYS_FILE}" ]]; then
+  qm set "${CONTROL_VMID}" --sshkeys "${SSH_KEYS_FILE}"
+fi
+
 qm set "${CONTROL_VMID}" \
   --ipconfig0 "ip=${CONTROL_IP}/${NETMASK},gw=${CONTROL_GW}"
 
 qm set "${CONTROL_VMID}" \
-  --cicustom "user=local:snippets/$(basename "${SNIPPET_FILE}")"
+  --cicustom "vendor=local:snippets/$(basename "${SNIPPET_FILE}")"
+
+# 엔트로피 소스 (SSH 호스트 키 생성 블로킹 방지)
+qm set "${CONTROL_VMID}" --rng0 source=/dev/urandom
 
 # Proxmox 재부팅 시 자동 시작
 qm set "${CONTROL_VMID}" --onboot 1
@@ -111,5 +154,16 @@ qm set "${CONTROL_VMID}" --vga std --delete serial0
 # VM 시작
 echo "[$(date '+%F %T')] starting VM..."
 qm start "${CONTROL_VMID}"
+
+# cloud-init 완료 대기 (marker 파일 확인, 최대 10분)
+echo "[$(date '+%F %T')] waiting for cloud-init to finish (max 10min)..."
+for i in {1..60}; do
+  if qm agent "${CONTROL_VMID}" exec -- cat /var/log/cloud-init-done.marker &>/dev/null; then
+    echo "[$(date '+%F %T')] cloud-init finished."
+    break
+  fi
+  echo "  waiting... (${i}/60)"
+  sleep 10
+done
 
 echo "[$(date '+%F %T')] done"

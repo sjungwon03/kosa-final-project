@@ -13,6 +13,7 @@
     state: present
     update_cache: yes
 
+# TODO(폐쇄망): GPG 키 및 저장소 URL을 Nexus raw 저장소로 전환
 - name: Docker GPG 키 추가
   apt_key:
     url: https://download.docker.com/linux/ubuntu/gpg
@@ -23,6 +24,7 @@
     repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
     state: present
 
+# TODO(폐쇄망): Nexus apt 프록시 저장소로 전환
 - name: Docker 엔진 및 컴포즈 설치
   apt:
     name:
@@ -39,6 +41,8 @@
     state: started
     enabled: yes
 
-- name: Docker SDK for Python 설치 (Ansible 모듈용)
-  pip:
-    name: docker
+- name: Docker SDK for Python 설치 (Ansible 모듈용 - APT 사용)
+  apt:
+    name: python3-docker
+    state: present
+

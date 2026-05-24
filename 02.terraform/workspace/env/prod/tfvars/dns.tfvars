@@ -1,0 +1,4 @@
+vms = {
+  "dns-01" = { vm_id = 2211, ip = "172.16.30.11", vlan = 30, bridge = "vmbr0", node = "kosa22", tags = ["infra-dns", "coredns", "etcd"], protection = true }
+  "dns-02" = { vm_id = 2312, ip = "172.16.30.12", vlan = 30, bridge = "vmbr0", node = "kosa23", tags = ["infra-dns", "coredns", "etcd"], protection = true }
+}

@@ -1,1 +1,10 @@
 ---
+vault_version: "1.17.0"
+vault_data_dir: "/opt/vault/data"
+vault_config_dir: "/etc/vault.d"
+vault_api_port: 8200
+vault_cluster_port: 8201
+vault_ui: true
+
+# Raft 클러스터 리더 (첫 번째 노드)
+vault_leader_ip: "172.16.30.20"

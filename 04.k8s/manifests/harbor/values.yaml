@@ -1,0 +1,46 @@
+expose:
+  type: loadBalancer
+  loadBalancer:
+    IP: ""
+    annotations:
+      metallb.universe.tf/allow-shared-ip: harbor-shared
+  tls:
+    enabled: false
+
+externalURL: http://harbor.mgmt.local
+
+internalTLS:
+  enabled: false
+
+ipFamily:
+  ipv4:
+    enabled: true
+  ipv6:
+    enabled: false
+  policy: SingleStack
+  families:
+    - IPv4
+
+harborAdminPassword: "kosa1004"
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    registry:
+      storageClass: "rbd-storage"
+    database:
+      storageClass: "rbd-storage"
+    redis:
+      storageClass: "rbd-storage"
+    trivy:
+      storageClass: "rbd-storage"
+    chartmuseum:
+      storageClass: "rbd-storage"
+
+trivy:
+  enabled: true
+
+chartmuseum:
+  enabled: true
+
+nodeSelector:
+  kubernetes.io/hostname: k8s-worker-plat

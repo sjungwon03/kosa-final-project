@@ -1,1 +1,17 @@
 ---
+# [테스트 환경] 전체 DNS 레코드 리스트
+dns_records:
+  # 1. 인프라 공통
+  - { name: "dns",           ip: "172.16.30.210", domain: "svc.local" }
+  - { name: "vault-01",      ip: "172.16.30.215", domain: "sec.local" }
+
+  # 2. DNS 서버
+  - { name: "dns-01",        ip: "172.16.30.210", domain: "svc.local" }
+  - { name: "dns-02",        ip: "172.16.30.211", domain: "svc.local" }
+
+  # 3. K8s 클러스터
+  - { name: "master-01",     ip: "172.16.30.200", domain: "k8s.local" }
+  - { name: "master-02",     ip: "172.16.30.201", domain: "k8s.local" }
+  - { name: "node-plat",     ip: "172.16.30.205", domain: "k8s.local" }
+  - { name: "node-01",       ip: "172.16.30.207", domain: "k8s.local" }
+  - { name: "node-02",       ip: "172.16.30.209", domain: "k8s.local" }
