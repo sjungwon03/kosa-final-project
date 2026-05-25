@@ -21,5 +21,5 @@ db_proxy_enabled: true
 db_proxy_port: 3306
 db_servers:
   - name: onprem-mysql
-    ip: "{{ vault_db_ip | default('172.16.30.100') }}"
-    port: "{{ vault_db_port | default(3306) }}"
+    ip: 172.16.30.206
+    port: 3306

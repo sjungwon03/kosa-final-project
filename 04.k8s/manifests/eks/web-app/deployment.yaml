@@ -4,7 +4,7 @@ metadata:
   name: db-config
   namespace: kosa
 data:
-  DATABASE_HOST: "HAPROXY_NLB_PLACEHOLDER"
+  DATABASE_HOST: "10.20.1.35"
   DATABASE_PORT: "3306"
   DATABASE_DB_NAME: "employees"
   PHOTOS_BUCKET: "kosa-photos-bucket-placeholder"
