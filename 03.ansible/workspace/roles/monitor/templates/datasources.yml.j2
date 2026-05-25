@@ -1,0 +1,16 @@
+apiVersion: 1
+
+datasources:
+  - name: Wazuh Indexer
+    type: opensearch
+    access: proxy
+    url: https://172.16.30.85:9200
+    basicAuth: true
+    basicAuthUser: admin
+    basicAuthPassword: kosa1234
+    jsonData:
+      index: "wazuh-alerts-*"
+      timeField: "timestamp"
+      version: "7.10.2"
+      tlsSkipVerify: true
+    isDefault: false

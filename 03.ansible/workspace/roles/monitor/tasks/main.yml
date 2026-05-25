@@ -53,6 +53,12 @@
     src: prometheus.yml.j2
     dest: /opt/monitoring/prometheus/prometheus.yml
 
+- name: Grafana datasources 설정 파일 배포
+  template:
+    src: datasources.yml.j2
+    dest: /opt/monitoring/grafana/datasources.yml
+    mode: '0644'
+
 # ── 스택 실행 ─────────────────────────────────────────────────
 # TODO(폐쇄망): docker-compose.yml의 이미지 태그를 Nexus docker 프록시 저장소 URL로 전환
 - name: 모니터링 스택 실행 (Docker Compose)

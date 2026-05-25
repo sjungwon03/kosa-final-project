@@ -1,7 +1,6 @@
 ---
 # siem: Wazuh Manager + Indexer + Dashboard (단일 노드)
 # Packer에서 wazuh-agent 패키지만 설치됨 — 서버 패키지는 여기서 설치
-# TODO: 폐쇄망 적용 전 — Wazuh apt 미러 구성 또는 오프라인 패키지 준비 필요
 
 # ── Wazuh apt 저장소 ──────────────────────────────────────────
 - name: Wazuh GPG 키 등록
@@ -24,11 +23,52 @@
     name: "wazuh-indexer={{ wazuh_indexer_version }}-1"
     state: present
 
+- name: Wazuh Indexer 설정 파일 배포
+  template:
+    src: opensearch.yml.j2
+    dest: /etc/wazuh-indexer/opensearch.yml
+    mode: '0644'
+  notify: restart wazuh-indexer
+
+- name: Admin password hash 생성
+  shell: "/usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p '{{ wazuh_indexer_admin_password }}'"
+  register: admin_hash
+  changed_when: false
+  no_log: true
+
+- name: Kibanaserver password hash 생성
+  shell: "/usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p '{{ wazuh_indexer_kibanaserver_password }}'"
+  register: kibanaserver_hash
+  changed_when: false
+  no_log: true
+
+- name: Internal users 설정
+  template:
+    src: internal_users.yml.j2
+    dest: /etc/wazuh-indexer/opensearch-security/internal_users.yml
+    mode: '0640'
+  vars:
+    wazuh_indexer_admin_password_hash: "{{ admin_hash.stdout }}"
+    wazuh_indexer_kibanaserver_password_hash: "{{ kibanaserver_hash.stdout }}"
+  notify: restart wazuh-indexer
+
 - name: Wazuh Indexer 활성화 및 시작
   systemd:
     name: wazuh-indexer
     enabled: true
     state: started
+
+- name: Security plugin 초기화 대기
+  wait_for:
+    port: 9200
+    host: "{{ wazuh_indexer_ip }}"
+    timeout: 120
+
+- name: Security index 초기화
+  shell: "/usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh -cd /etc/wazuh-indexer/opensearch-security/ -icl -nhnv -cacert /etc/wazuh-indexer/certs/root-ca.pem -cert /etc/wazuh-indexer/certs/admin.pem -key /etc/wazuh-indexer/certs/admin.key"
+  when: ansible_facts.services['wazuh-indexer.service'].state == 'running'
+  changed_when: true
+  no_log: true
 
 # ── Wazuh Manager ─────────────────────────────────────────────
 - name: Wazuh Manager 설치
@@ -43,6 +83,13 @@
     state: started
 
 # ── Wazuh Dashboard ───────────────────────────────────────────
+- name: Wazuh Dashboard 설정
+  template:
+    src: opensearch_dashboards.yml.j2
+    dest: /etc/wazuh-dashboard/opensearch_dashboards.yml
+    mode: '0640'
+  notify: restart wazuh-dashboard
+
 - name: Wazuh Dashboard 설치
   apt:
     name: "wazuh-dashboard={{ wazuh_dashboard_version }}-1"

@@ -56,7 +56,7 @@ rsync -avz --delete \
   "${SCRIPT_DIR}/workspace/" "${CONTROL_HOST}:${REMOTE_WORKSPACE}/ansible/"
 
 echo "[4/4] 실행 권한 부여..."
-ssh $SSH_OPTS "$CONTROL_HOST" "chmod +x ${REMOTE_WORKSPACE}/terraform/02-run.sh"
+ssh $SSH_OPTS "$CONTROL_HOST" "chmod +x ${REMOTE_WORKSPACE}/terraform/workspace/*.sh"
 
 # 소켓 정리
 ssh -O exit -o ControlPath="${CONTROL_SOCKET}" "$CONTROL_HOST" 2>/dev/null || true

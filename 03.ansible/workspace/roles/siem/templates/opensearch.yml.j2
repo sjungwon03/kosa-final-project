@@ -1,0 +1,25 @@
+plugins:
+  security:
+    ssl:
+      transport:
+        pemcert_filepath: /etc/wazuh-indexer/certs/node-1.pem
+        pemkey_filepath: /etc/wazuh-indexer/certs/node-1.key
+        pemtrustedcas_filepath: /etc/wazuh-indexer/certs/root-ca.pem
+        enforce_hostname_verification: false
+      http:
+        pemcert_filepath: /etc/wazuh-indexer/certs/node-1.pem
+        pemkey_filepath: /etc/wazuh-indexer/certs/node-1.key
+        pemtrustedcas_filepath: /etc/wazuh-indexer/certs/root-ca.pem
+    allow_unauthenticated_demodomain: false
+    allow_default_init_securityindex: true
+    nodes_dn:
+      - "CN=node-1,OU=Wazuh,O=Wazuh,L=Wazuh,C=US"
+    authcz:
+      admin_dn:
+        - "CN=admin,OU=Wazuh,O=Wazuh,L=Wazuh,C=US"
+    krb:
+      serverkey_filepath: /etc/wazuh-indexer/krb/serverkey.keytab
+    http:
+      anonymous_auth_enabled: false
+      xff:
+        enabled: false
