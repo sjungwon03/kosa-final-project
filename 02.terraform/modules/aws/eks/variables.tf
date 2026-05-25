@@ -67,3 +67,27 @@ variable "node_group_max_size" {
   type        = number
   default     = 3
 }
+
+variable "create_fargate_profile" {
+  description = "Whether to create Fargate profile for DR"
+  type        = bool
+  default     = false
+}
+
+variable "fargate_namespace" {
+  description = "Namespace for Fargate profile"
+  type        = string
+  default     = "kosa"
+}
+
+variable "fargate_labels" {
+  description = "Labels for Fargate profile selector"
+  type        = map(string)
+  default     = {}
+}
+
+variable "admin_user_arn" {
+  description = "IAM user ARN for cluster admin access"
+  type        = string
+  default     = ""
+}

@@ -48,6 +48,50 @@ resource "aws_iam_role_policy_attachment" "cluster_vpc_resource" {
   role       = aws_iam_role.cluster.name
 }
 
+resource "aws_iam_role" "fargate" {
+  name = "${var.cluster_name}-fargate-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "eks-fargate-pods.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "fargate_pod" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy"
+  role       = aws_iam_role.fargate.name
+}
+
+resource "aws_eks_fargate_profile" "dr" {
+  count = var.create_fargate_profile ? 1 : 0
+
+  cluster_name           = aws_eks_cluster.this.name
+  fargate_profile_name   = "${var.cluster_name}-dr"
+  pod_execution_role_arn = aws_iam_role.fargate.arn
+  subnet_ids             = var.subnet_ids
+
+  selector {
+    namespace = var.fargate_namespace
+    labels    = var.fargate_labels
+  }
+
+  tags = merge(var.tags, {
+    Purpose = "DR"
+  })
+
+  depends_on = [
+    aws_iam_role_policy_attachment.fargate_pod
+  ]
+}
+
 resource "aws_iam_role" "node_group" {
   count = var.create_node_group ? 1 : 0
 
@@ -152,6 +196,34 @@ resource "aws_eks_addon" "coredns" {
     update = "30m"
     delete = "30m"
   }
+}
+
+resource "aws_eks_access_entry" "admin" {
+  count = var.admin_user_arn != "" ? 1 : 0
+
+  cluster_name  = aws_eks_cluster.this.name
+  principal_arn = var.admin_user_arn
+  type          = "STANDARD"
+
+  depends_on = [
+    aws_eks_cluster.this
+  ]
+}
+
+resource "aws_eks_access_policy_association" "admin" {
+  count = var.admin_user_arn != "" ? 1 : 0
+
+  cluster_name  = aws_eks_cluster.this.name
+  principal_arn = var.admin_user_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+
+  depends_on = [
+    aws_eks_access_entry.admin
+  ]
 }
 
 resource "aws_eks_addon" "kube_proxy" {

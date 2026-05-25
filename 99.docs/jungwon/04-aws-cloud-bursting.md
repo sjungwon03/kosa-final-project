@@ -119,23 +119,10 @@ frontend http_front
 ### 2. EKS 설정
 
 ```bash
-# kubeconfig
 aws eks update-kubeconfig --name kosa-proxy-eks --region ap-northeast-2
-
-# Karpenter 배포
-CLUSTER_NAME=kosa-proxy-eks
-IMAGE_REGISTRY=harbor.your-domain.com
-envsubst < 02.terraform/modules/aws/karpenter/templates/karpenter-provisioner.yaml.tpl | kubectl apply -f -
 ```
 
-### 3. EKS Ingress LB IP 확인
-
-```bash
-kubectl get svc api-gateway -n kosa
-# EXTERNAL-IP를 vault_eks_ingress_ip에 설정
-```
-
-### 4. HAProxy 배포
+### 3. HAProxy 배포
 
 ```bash
 cd 03.ansible/workspace

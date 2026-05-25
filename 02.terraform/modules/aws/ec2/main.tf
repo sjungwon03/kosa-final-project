@@ -99,6 +99,14 @@ resource "aws_security_group" "this" {
   }
 
   ingress {
+    description = "MySQL Proxy from VPC"
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  ingress {
     description = "SSH"
     from_port   = 22
     to_port     = 22

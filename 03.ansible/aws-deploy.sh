@@ -115,11 +115,8 @@ if [ "$VPN_ENABLED" = true ]; then
 fi
 echo "2. EKS 배포:"
 echo "   aws eks update-kubeconfig --name ${EKS_CLUSTER} --region ap-northeast-2"
-echo "   envsubst < ../../02.terraform/modules/aws/karpenter/templates/karpenter-provisioner.yaml.tpl | kubectl apply -f -"
 echo ""
-echo "3. EKS Ingress IP 확인 후 vault_eks_ingress_ip 설정"
-echo ""
-echo "4. HAProxy 재배포:"
+echo "3. HAProxy 재배포:"
 echo "   ./aws-deploy.sh"
 echo ""
 echo "5. SSH 접속:"

@@ -139,9 +139,21 @@ variable "eks_create_addons" {
 }
 
 variable "eks_create_node_group" {
-  description = "Whether to create a managed node group"
+  description = "Whether to create a managed node group (set false for Fargate-only DR)"
+  type        = bool
+  default     = false
+}
+
+variable "eks_create_fargate" {
+  description = "Whether to create Fargate profile for DR pods"
   type        = bool
   default     = true
+}
+
+variable "eks_fargate_namespace" {
+  description = "Namespace for Fargate DR pods"
+  type        = string
+  default     = "kosa"
 }
 
 variable "eks_node_instance_types" {
@@ -168,10 +180,10 @@ variable "eks_node_max_size" {
   default     = 3
 }
 
-variable "cloudburst_threshold" {
-  description = "CPU threshold for cloudbursting (percentage)"
-  type        = number
-  default     = 80
+variable "eks_admin_user_arn" {
+  description = "IAM user ARN for EKS cluster admin access"
+  type        = string
+  default     = "arn:aws:iam::945503455708:user/kosa"
 }
 
 variable "enable_cloudfront" {

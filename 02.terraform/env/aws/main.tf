@@ -57,6 +57,7 @@ module "ec2" {
 
   name            = "${var.name}-haproxy"
   vpc_id          = module.vpc.vpc_id
+  vpc_cidr        = var.vpc_cidr
   subnet_ids      = module.vpc.public_subnet_ids
   instance_type   = var.instance_type
   key_name        = module.keypair.key_name
@@ -180,18 +181,10 @@ module "eks" {
   node_group_desired_size   = var.eks_node_desired_size
   node_group_min_size       = var.eks_node_min_size
   node_group_max_size       = var.eks_node_max_size
+  create_fargate_profile    = var.eks_create_fargate
+  fargate_namespace         = var.eks_fargate_namespace
+  admin_user_arn            = var.eks_admin_user_arn
   tags                     = var.tags
-}
-
-module "karpenter" {
-  source = "../../modules/aws/karpenter"
-
-  cluster_name       = "${var.name}-eks"
-  subnet_ids         = module.vpc.private_subnet_ids
-  security_group_id  = aws_security_group.eks_nodes.id
-  tags               = var.tags
-
-  depends_on = [module.eks]
 }
 
 module "site_to_site_vpn" {

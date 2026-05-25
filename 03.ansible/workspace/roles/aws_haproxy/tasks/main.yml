@@ -38,12 +38,6 @@
     mode: '0644'
   notify: restart haproxy
 
-- name: Cloudburst 컨트롤 스크립트 배포
-  template:
-    src: cloudburst-control.sh.j2
-    dest: /usr/local/bin/cloudburst-control.sh
-    mode: '0755'
-
 - name: HAProxy 서비스 활성화 및 시작
   service:
     name: haproxy
@@ -60,6 +54,7 @@
     - 80/tcp
     - 443/tcp
     - 8404/tcp
+    - "{{ db_proxy_port | default(3306) }}/tcp"
   when: ansible_facts.services['firewalld.service'] is defined
 
 - name: firewalld 리로드

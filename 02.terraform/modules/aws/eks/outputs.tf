@@ -18,3 +18,11 @@ output "cluster_certificate_authority_data" {
 output "cluster_role_arn" {
   value = aws_iam_role.cluster.arn
 }
+
+output "fargate_profile_name" {
+  value = var.create_fargate_profile ? aws_eks_fargate_profile.dr[0].fargate_profile_name : null
+}
+
+output "fargate_role_arn" {
+  value = aws_iam_role.fargate.arn
+}

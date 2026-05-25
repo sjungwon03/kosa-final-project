@@ -53,3 +53,9 @@ variable "onprem_cidr" {
   type        = string
   default     = "172.16.0.0/12"
 }
+
+variable "vpc_cidr" {
+  description = "VPC CIDR block for internal access"
+  type        = string
+  default     = "10.20.0.0/16"
+}

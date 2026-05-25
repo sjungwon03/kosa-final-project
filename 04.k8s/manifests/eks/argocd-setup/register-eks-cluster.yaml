@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: eks-cluster
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/sjungwon03/kosa-final-project.git
+    path: 04.k8s/manifests/eks
+    targetRevision: HEAD
+  destination:
+    name: eks-cluster
+    namespace: kosa
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: eks-web-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/sjungwon03/kosa-final-project.git
+    path: 04.k8s/manifests/eks/web-app
+    targetRevision: HEAD
+  destination:
+    name: eks-cluster
+    namespace: kosa
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

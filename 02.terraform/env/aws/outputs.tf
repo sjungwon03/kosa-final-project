@@ -118,12 +118,8 @@ output "eks_cluster_arn" {
   value = module.eks.cluster_arn
 }
 
-output "karpenter_instance_profile" {
-  value = module.karpenter.instance_profile_name
-}
-
-output "cloudburst_threshold" {
-  value = var.cloudburst_threshold
+output "eks_fargate_profile" {
+  value = module.eks.fargate_profile_name
 }
 
 output "kubeconfig_command" {
