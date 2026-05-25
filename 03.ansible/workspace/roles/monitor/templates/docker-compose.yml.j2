@@ -14,7 +14,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD={{ grafana_admin_password | default('admin123') }}
+      - GF_SECURITY_ADMIN_PASSWORD={{ grafana_admin_password | default('kosa1004') }}
       - GF_INSTALL_PLUGINS=grafana-opensearch-datasource
     volumes:
       - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
