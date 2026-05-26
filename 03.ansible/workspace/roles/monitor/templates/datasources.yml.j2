@@ -16,17 +16,21 @@ datasources:
     editable: true
 
   - name: Wazuh Indexer
-    type: opensearch
+    uid: wazuh-indexer
+    type: grafana-opensearch-datasource
     access: proxy
-    url: https://172.16.30.85:9200
+    url: "{{ wazuh_indexer_url }}"
     basicAuth: true
-    basicAuthUser: admin
+    basicAuthUser: "{{ wazuh_indexer_user }}"
     secureJsonData:
-      basicAuthPassword: kosa1004
+      basicAuthPassword: "{{ wazuh_indexer_password }}"
     jsonData:
-      index: "wazuh-alerts-*"
-      timeField: "timestamp"
-      version: "7.10.2"
+      flavor: opensearch
+      database: "{{ wazuh_indexer_index }}"
+      timeField: "{{ wazuh_indexer_time_field }}"
+      version: "2.8.0"
+      pplEnabled: true
+      serverless: false
       tlsSkipVerify: true
     isDefault: false
     editable: true

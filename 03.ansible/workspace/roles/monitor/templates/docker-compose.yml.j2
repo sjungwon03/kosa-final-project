@@ -17,7 +17,7 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD={{ grafana_admin_password | default('kosa1004') }}
       - GF_INSTALL_PLUGINS=grafana-opensearch-datasource
     volumes:
-      - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./grafana/provisioning:/etc/grafana/provisioning
     restart: always
 
   loki:

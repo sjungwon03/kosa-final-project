@@ -156,10 +156,9 @@
   when: admin_hash.stdout != 'hash_failed'
 
 - name: Security 설정 적용
-  shell: "/usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh -cd /etc/wazuh-indexer/opensearch-security/ -icl -nhnv -cacert /etc/wazuh-indexer/certs/root-ca.pem -cert /etc/wazuh-indexer/certs/admin.pem -key /etc/wazuh-indexer/certs/admin.key 2>/dev/null || echo 'skipped'"
+  shell: "JAVA_HOME=/usr/share/wazuh-indexer/jdk /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh -cd /etc/wazuh-indexer/opensearch-security/ -icl -nhnv -cacert /etc/wazuh-indexer/certs/root-ca.pem -cert /etc/wazuh-indexer/certs/admin.pem -key /etc/wazuh-indexer/certs/admin-key.pem"
   when: admin_hash.stdout != 'hash_failed'
   changed_when: true
-  failed_when: false
 
 - name: Wazuh Indexer 재시작
   systemd:
@@ -185,7 +184,7 @@
   lineinfile:
     path: /etc/wazuh-dashboard/opensearch_dashboards.yml
     regexp: 'opensearch.password:'
-    line: "opensearch.password: {{ wazuh_indexer_admin_password }}"
+    line: "opensearch.password: \"{{ wazuh_indexer_admin_password }}\""
   when: admin_hash.stdout != 'hash_failed'
 
 - name: Wazuh Dashboard 설치
