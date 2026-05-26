@@ -381,3 +381,13 @@ GEMINI.md
 
 # 개인 문서
 임시.md
+
+!02.terraform/env/
+!02.terraform/env/aws
+
+# AWS SSH keys
+*.pem
+!*.pem.example
+
+# Terraform tfvars
+02.terraform/env/aws/terraform.tfvars

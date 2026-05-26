@@ -2,6 +2,14 @@
 # k8s_master: 클러스터 초기화 + CNI 설치 + HA 마스터 조인
 # 대상: k8s_masters (첫 번째 마스터에서만 init, 나머지는 control-plane join)
 
+- name: apt lock 해제 대기 (unattended-upgrades)
+  shell: |
+    while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+      sleep 5
+    done
+  timeout: 300
+  changed_when: false
+
 # ── 0. K8s 내부 VIP (Keepalived, VLAN 30) ──────────────────
 # 마스터 3대 모두에 설치. 우선순위에 따라 1대만 VIP 점유.
 - name: Keepalived 설치 (K8s 내부 VIP용)

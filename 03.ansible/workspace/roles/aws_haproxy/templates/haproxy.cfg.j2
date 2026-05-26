@@ -1,0 +1,66 @@
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    maxconn {{ haproxy_maxconn }}
+    daemon
+    stats socket /var/run/haproxy.sock mode 660 level admin
+
+defaults
+    log global
+    mode tcp
+    option tcplog
+    option dontlognull
+    option tcp-check
+    timeout connect {{ haproxy_timeout_connect }}
+    timeout client {{ haproxy_timeout_client }}
+    timeout server {{ haproxy_timeout_server }}
+    retries 3
+
+frontend http_front
+    bind *:80
+    mode tcp
+    
+    default_backend mixed_http
+
+backend mixed_http
+    option tcp-check
+    tcp-check connect
+{% for server in onprem_servers %}
+    server {{ server.name }} {{ server.ip }}:{{ server.port }} check inter 2s fall 2 rise 3
+{% endfor %}
+{% if eks_servers is defined and eks_servers | length > 0 %}
+{% for server in eks_servers %}
+    server {{ server.name }} {{ server.ip }}:{{ server.port }} check inter 2s fall 2 rise 3 backup
+{% endfor %}
+{% endif %}
+
+frontend https_front
+    bind *:443
+    mode tcp
+    
+    default_backend mixed_http
+
+{% if db_proxy_enabled | default(false) %}
+frontend db_proxy
+    bind *:{{ db_proxy_port | default(3306) }}
+    mode tcp
+    
+    default_backend onprem_db
+
+backend onprem_db
+    balance roundrobin
+    option tcp-check
+    tcp-check connect
+{% for db in db_servers %}
+    server {{ db.name }} {{ db.ip }}:{{ db.port }} check inter 5s fall 3 rise 2
+{% endfor %}
+{% endif %}
+
+listen stats
+    bind *:{{ haproxy_stats_port }}
+    mode http
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+    stats admin if LOCALHOST
+    stats auth {{ haproxy_stats_user }}:{{ haproxy_stats_pass }}

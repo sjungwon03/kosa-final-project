@@ -1,0 +1,43 @@
+expose:
+  type: ingress
+  tls:
+    auto:
+      # 인증서 표준 규격 (port, protocol을 제외한 domain만 작성
+      commonName: "harbor.192.168.34.2.nip.io"
+  ingress:
+    hosts:
+      # ingress 라우팅용 해더 매칭 문자열((port, protocol을 제외)을 적는 부분 
+      core: harbor.192.168.34.2.nip.io
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+
+# docker client가 토큰을 발행받고 실제로 통신할 때 사용하는 주소 (port 포함)
+externalURL: https://harbor.192.168.34.2.nip.io:32445  
+
+harborAdminPassword: "Kosa1004"
+persistence:
+  # harbor에 이미지push할 때 harbor의 pod가 재시작되거나 vm 다운 시 컨테이너 이미지와 DB 데이터 삭제 방지를 위해 false -> true로 지정
+  enabled: true
+  persistentVolumeClaim:
+    # registry의 저장소 클래스틑 표준인 local-path로 임시 지정, 이후 argocd 담당자가 확인해 클러스터 환경에 맞게 이름을 변경해야 함.
+    registry:
+      storageClass: "local-path"
+    databases:
+      storageClass: "local-path"
+    redis:
+      storageClass: "local-path"
+    trivy:
+      storageClass: "local-path"
+    chartmuseum:
+      storageClass: "local-path"
+
+# 보안 취약점 진단 도구 trivy도 활성화
+# 이미지가 들어오면, 취약한 라이브러리 또는 os 보안 구멍이 없는지 자동으로 정밀 검사하고
+# 검사 후 이미지 결과가 "위험" 수준이면 kubernetes cluster로 배포되지 못하도록 웹 ui에서 차단
+trivy:                                          
+  enabled: true
+
+# helm 차트 저장소 기능인 chartmuseum도 활성화
+# harbor 서버 하나로 도커 이미지 저장소와 쿠버네티스 배포 패키지 두 개의 역할 동시 수행
+chartmuseum:                                           
+  enabled: true

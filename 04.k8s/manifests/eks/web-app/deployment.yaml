@@ -1,0 +1,101 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-config
+  namespace: kosa
+data:
+  DATABASE_HOST: "10.20.1.35"
+  DATABASE_PORT: "3306"
+  DATABASE_DB_NAME: "employees"
+  PHOTOS_BUCKET: "kosa-photos-bucket-placeholder"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: kosa
+  labels:
+    app: web-app
+    environment: eks-active
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web-app
+  template:
+    metadata:
+      labels:
+        app: web-app
+        environment: eks-active
+    spec:
+      containers:
+      - name: web-app
+        image: 945503455708.dkr.ecr.ap-northeast-2.amazonaws.com/kosa/flask-app:latest
+        ports:
+        - containerPort: 80
+          name: http
+        envFrom:
+        - configMapRef:
+            name: db-config
+        env:
+        - name: FLASK_APP
+          value: application.py
+        - name: APP_ENV
+          value: eks-active-fargate
+        - name: DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: username
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: password
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+          limits:
+            cpu: "500m"
+            memory: "1Gi"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 30
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-secret
+  namespace: kosa
+type: Opaque
+stringData:
+  username: "root"
+  password: "kosa1004"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app
+  namespace: kosa
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+spec:
+  type: LoadBalancer
+  selector:
+    app: web-app
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    protocol: TCP

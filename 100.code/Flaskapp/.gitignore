@@ -1,0 +1,17 @@
+# 환경변수 (절대 커밋 금지)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# 가상환경
+venv/
+.venv/
+
+# macOS
+.DS_Store

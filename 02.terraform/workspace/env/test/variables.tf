@@ -25,6 +25,10 @@ variable "vms" {
     ip             = string
     vlan           = number
     bridge         = string
+    storage_ip     = optional(string)
+    storage_bridge = optional(string, "vmbr1")
+    storage_cidr   = optional(number, 24)
+    storage_mtu    = optional(number, 9000)
     node           = string
     storage_ip     = optional(string)
     storage_bridge = optional(string, "vmbr1")
@@ -39,6 +43,11 @@ variable "vms" {
     protection     = optional(bool, false)
   }))
   description = "배포할 VM 목록, 반드시 -var-file로 주입 (tfvars/ 참고)"
+}
+
+variable "vm_tags" {
+  type    = list(string)
+  default = ["kosa", "managed-by-terraform", "env-prod"]
 }
 
 variable "vm_nameserver" {

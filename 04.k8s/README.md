@@ -7,15 +7,14 @@
 
 **파이프라인 (실행 순서)**
 
-| 순서 | 폴더 | 내용 | 실행 위치 |
-|---|---|---|---|
-| 1 | 00.scripts | 베이스 템플릿(9000) 생성 | Proxmox 호스트 |
-| 2 | 01.packer | 공통 템플릿(9003, 9005) 생성 | 빌드 서버 |
-| 3 | 03.ansible | 컨트롤 노드 VM 생성 | Proxmox 호스트 |
-| 4 | 02.terraform | VM 프로비저닝 | 컨트롤 노드 |
-| 5 | 03.ansible | Ansible 플레이북 실행 (K8s 조인) | 컨트롤 노드 |
-| 6 | **04.k8s** | **K8s 클러스터 리소스 관리** | **컨트롤 노드** |
-
+| 순서 | 폴더         | 내용                             | 실행 위치       |
+| ---- | ------------ | -------------------------------- | --------------- |
+| 1    | 00.scripts   | 베이스 템플릿(9000) 생성         | Proxmox 호스트  |
+| 2    | 01.packer    | 공통 템플릿(9003, 9005) 생성     | 빌드 서버       |
+| 3    | 03.ansible   | 컨트롤 노드 VM 생성              | Proxmox 호스트  |
+| 4    | 02.terraform | VM 프로비저닝                    | 컨트롤 노드     |
+| 5    | 03.ansible   | Ansible 플레이북 실행 (K8s 조인) | 컨트롤 노드     |
+| 6    | **04.k8s**   | **K8s 클러스터 리소스 관리**     | **컨트롤 노드** |
 
 ## 구조
 
@@ -148,6 +147,7 @@ kubectl -n percona-db get svc | grep haproxy
 - IP는 MetalLB 풀에서 미리 지정 (harbor=.200, gitea=.201, argocd=.202)
 
 MetalLB IP 확인 후 `dns_servers.yml`에 반영되어 있지 않으면 추가:
+
 ```bash
 # [컨트롤 노드]
 vi ~/workspace/ansible/inventories/prod/group_vars/dns_servers.yml
@@ -155,9 +155,9 @@ vi ~/workspace/ansible/inventories/prod/group_vars/dns_servers.yml
 
 ```yaml
 dns_records:
-  - { name: "harbor",  ip: "172.16.30.200", domain: "mgmt.local" }
-  - { name: "gitea",   ip: "172.16.30.201", domain: "mgmt.local" }
-  - { name: "argocd",  ip: "172.16.30.202", domain: "mgmt.local" }
+  - { name: "harbor", ip: "172.16.30.200", domain: "mgmt.local" }
+  - { name: "gitea", ip: "172.16.30.201", domain: "mgmt.local" }
+  - { name: "argocd", ip: "172.16.30.202", domain: "mgmt.local" }
 ```
 
 ```bash
@@ -170,18 +170,19 @@ ANSIBLE_CONFIG=~/workspace/ansible/ansible.cfg \
 
 ## 기본 계정 정보
 
-| 서비스 | DNS | 계정 |
-|--------|-----|------|
-| Harbor | harbor.mgmt.local | admin / values.yaml에 설정된 값 |
-| Gitea | gitea.mgmt.local | kosa / values.yaml에 설정된 값 |
-| Percona DB | 내부/외부 Service | root / values.yaml에 설정된 값 |
-| ArgoCD | argocd.mgmt.local | admin |
+| 서비스     | DNS               | 계정                            |
+| ---------- | ----------------- | ------------------------------- |
+| Harbor     | harbor.mgmt.local | admin / values.yaml에 설정된 값 |
+| Gitea      | gitea.mgmt.local  | kosa / values.yaml에 설정된 값  |
+| Percona DB | 내부/외부 Service | root / values.yaml에 설정된 값  |
+| ArgoCD     | argocd.mgmt.local | admin                           |
 
 ---
 
 ## 트러블슈팅
 
 **harbor-core CrashLoopBackOff**
+
 - 원인: harbor-redis 미기동 상태에서 core가 먼저 시작됨
 - 해결: harbor-redis Running 후 자동 복구 — 기다리면 됨
 
@@ -191,6 +192,7 @@ kubectl logs -n harbor <harbor-core-pod>
 ```
 
 **gitea ImagePullBackOff — bitnami 이미지 not found**
+
 - 원인: gitea chart 10.x가 docker.io/bitnami 이미지 참조하는데 해당 태그 docker.io에서 삭제됨
 - 해결: gitea chart 12.x 이상으로 버전 업 (Chart.yaml dependency version 수정 후 `helm dependency update`)
 
@@ -203,6 +205,7 @@ helm dependency update ~/k8s/manifests/gitea/
 ```
 
 **percona pxc Pending — StorageClass 불일치**
+
 - 원인: `values.yaml`의 `storageClass`가 실제 StorageClass 이름과 다름 (`ceph-rbd` ≠ `rbd-storage`)
 - 해결: `values.yaml`의 `storageClass: rbd-storage` 수정 후 재배포
 
@@ -212,6 +215,7 @@ kubectl describe pvc -n percona-db <pvc-name> | grep StorageClass
 ```
 
 **percona pxc-db CR 미생성 (operator만 뜨고 pxc 파드 없음)**
+
 - 원인: `pxc-operator`와 `pxc-db`를 동시 설치 시 CRD 등록 전에 CR 적용 시도 → silent fail
 - 해결: `deploy-devops.sh`에서 자동 처리 (operator rollout 대기 후 helm upgrade 재적용)
 - 수동 복구 시: operator Running 확인 후 `helm upgrade` 실행
@@ -224,6 +228,7 @@ helm upgrade percona-db ~/k8s/manifests/percona-db \
 ```
 
 **Ansible MetalLB/Ceph CSI 스킵 (skipped=28)**
+
 - 원인: `inventories/prod/group_vars/all.yml` 누락 시 `metallb_enabled`, `ceph_csi_enabled` 기본값 false 적용
 - 해결: `03.ansible/workspace/inventories/prod/group_vars/all.yml` 파일 존재 확인 후 재실행
 
@@ -239,13 +244,16 @@ kubectl get pods -n metallb-system
 ## [TODO] 고도화 로드맵
 
 ### Phase 1: GitOps Auto-Provisioning
+
 - **장애 복구 자동화**: Gitea Actions Webhook 연동
 - **스케일 아웃**: 부하 발생 시 컨트롤 노드에서 `terraform apply` → `ansible-playbook` 자동 트리거 구축
 
 ### Phase 2: Manifest 구조화 및 CD 연동
+
 - **ArgoCD 연동**: `06.argocd`와 연동하여 GitOps 배포 체계 완성
 - **리소스 선언**: 모니터링 에이전트, Vault Injector, Ingress 룰 등 모든 리소스의 YAML/Helm 관리
 
 ### Phase 3: Persistent Storage (CSI)
+
 - **Ceph CSI 구성**: Proxmox Ceph(rbd-storage)와 K8s StorageClass 연동
 - **동적 볼륨 할당**: PVC를 통한 파드 영구 데이터 저장 환경 구축

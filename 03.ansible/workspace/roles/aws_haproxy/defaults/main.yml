@@ -1,0 +1,24 @@
+---
+haproxy_stats_port: 8404
+haproxy_stats_user: admin
+haproxy_stats_pass: "{{ vault_haproxy_stats_pass | default('changeme') }}"
+
+onprem_servers:
+  - name: onprem-lb
+    ip: 172.16.30.205
+    port: 80
+    weight: 70
+
+eks_servers: []
+
+haproxy_maxconn: 2000
+haproxy_timeout_connect: 5s
+haproxy_timeout_client: 50s
+haproxy_timeout_server: 50s
+
+db_proxy_enabled: true
+db_proxy_port: 3306
+db_servers:
+  - name: onprem-mysql
+    ip: 172.16.30.100
+    port: 3306

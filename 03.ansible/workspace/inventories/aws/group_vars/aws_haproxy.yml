@@ -1,0 +1,25 @@
+---
+ansible_python_interpreter: /usr/bin/python3
+
+onprem_servers:
+  - name: onprem-lb
+    ip: 172.16.30.205
+    port: 80
+
+eks_servers:
+  - name: eks-backup-1
+    ip: "10.20.20.117"
+    port: 80
+  - name: eks-backup-2
+    ip: "10.20.20.204"
+    port: 80
+
+haproxy_stats_user: admin
+haproxy_stats_pass: "{{ vault_haproxy_stats_pass }}"
+
+db_proxy_enabled: true
+db_proxy_port: 3306
+db_servers:
+  - name: onprem-mysql
+    ip: 172.16.30.206
+    port: 3306

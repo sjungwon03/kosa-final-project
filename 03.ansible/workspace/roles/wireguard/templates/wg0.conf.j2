@@ -1,0 +1,13 @@
+[Interface]
+Address = {{ wireguard_server_ip }}
+ListenPort = {{ wireguard_port }}
+PrivateKey = {{ lookup('file', '/etc/wireguard/private.key') }}
+SaveConfig = false
+
+[Peer]
+PublicKey = {{ onprem_peer_public_key }}
+AllowedIPs = {{ onprem_peer_allowed_ips }}
+{% if onprem_peer_endpoint %}
+Endpoint = {{ onprem_peer_endpoint }}:{{ wireguard_port }}
+{% endif %}
+PersistentKeepalive = 25
