@@ -10,7 +10,7 @@
 cd 02.terraform/env/aws
 
 # terraform.tfvars 설정
-customer_gateway_ip = "125.131.208.229"  # TP-Link 공인 IP
+customer_gateway_ip = "YOUR_PUBLIC_IP"  # TODO: Set via terraform.tfvars
 onprem_cidr_block = "172.16.0.0/12"
 
 # 실행

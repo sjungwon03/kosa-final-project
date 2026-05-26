@@ -382,6 +382,12 @@ GEMINI.md
 # 개인 문서
 임시.md
 
+# VPN 설정 파일 (민감 정보 포함)
+vpn-configuration.xml
+*vpn*.xml
+IPSEC*.md
+PFSENSE*.md
+
 !02.terraform/env/
 !02.terraform/env/aws
 

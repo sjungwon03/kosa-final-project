@@ -19,7 +19,7 @@ pfSense WAN                              VGW
     │                                      │
 TP-Link NAT ── UDP 500/4500 ──────────── VPN Connection
     │                                      │
-125.131.208.229                          Tunnel 1: 43.x.x.x
+YOUR_PUBLIC_IP                          Tunnel 1: 43.x.x.x
 (공인 IP)                                Tunnel 2: 54.x.x.x
                                          (AWS Outside IPs)
 ```
@@ -48,7 +48,7 @@ terraform output
 ```hcl
 # Customer Gateway IP (TP-Link ER605 공인 IP)
 # 온프레에서 curl ifconfig.me로 확인
-customer_gateway_ip = "125.131.208.229"  # 실제 공인 IP 입력
+customer_gateway_ip = "YOUR_PUBLIC_IP"  # TODO: Set via terraform.tfvars
 
 # On-Prem CIDR (모든 VLAN 포함)
 onprem_cidr_block = "172.16.0.0/12"

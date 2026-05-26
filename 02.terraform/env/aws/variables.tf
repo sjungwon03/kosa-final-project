@@ -183,7 +183,7 @@ variable "eks_node_max_size" {
 variable "eks_admin_user_arn" {
   description = "IAM user ARN for EKS cluster admin access"
   type        = string
-  default     = "arn:aws:iam::945503455708:user/kosa"
+  default     = ""  # TODO: Set via terraform.tfvars or environment variable
 }
 
 variable "enable_cloudfront" {
