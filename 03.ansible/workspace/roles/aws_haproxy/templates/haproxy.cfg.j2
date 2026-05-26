@@ -10,7 +10,6 @@ defaults
     mode tcp
     option tcplog
     option dontlognull
-    option tcp-check
     timeout connect {{ haproxy_timeout_connect }}
     timeout client {{ haproxy_timeout_client }}
     timeout server {{ haproxy_timeout_server }}
@@ -18,19 +17,21 @@ defaults
 
 frontend http_front
     bind *:80
-    mode tcp
+    mode http
     
     default_backend mixed_http
 
 backend mixed_http
-    option tcp-check
-    tcp-check connect
+    mode http
+    balance roundrobin
+    option httpchk GET / HTTP/1.1\r\nHost:\ localhost
+    http-check expect status 200-399
 {% for server in onprem_servers %}
-    server {{ server.name }} {{ server.ip }}:{{ server.port }} check inter 2s fall 2 rise 3
+    server {{ server.name }} {{ server.ip }}:{{ server.port }} check inter 2s fall 3 rise 2{% if server.weight %} weight {{ server.weight }}{% endif %}
 {% endfor %}
 {% if eks_servers is defined and eks_servers | length > 0 %}
 {% for server in eks_servers %}
-    server {{ server.name }} {{ server.ip }}:{{ server.port }} check inter 2s fall 2 rise 3 backup
+    server {{ server.name }} {{ server.ip }}:{{ server.port }} check inter 2s fall 3 rise 2 backup
 {% endfor %}
 {% endif %}
 
@@ -38,7 +39,19 @@ frontend https_front
     bind *:443
     mode tcp
     
-    default_backend mixed_http
+    default_backend mixed_https
+
+backend mixed_https
+    mode tcp
+    balance roundrobin
+{% for server in onprem_servers %}
+    server {{ server.name }} {{ server.ip }}:{{ server.port }} check inter 2s fall 3 rise 2{% if server.weight %} weight {{ server.weight }}{% endif %}
+{% endfor %}
+{% if eks_servers is defined and eks_servers | length > 0 %}
+{% for server in eks_servers %}
+    server {{ server.name }} {{ server.ip }}:{{ server.port }} check inter 2s fall 3 rise 2 backup
+{% endfor %}
+{% endif %}
 
 {% if db_proxy_enabled | default(false) %}
 frontend db_proxy
