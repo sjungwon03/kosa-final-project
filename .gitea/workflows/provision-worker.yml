@@ -1,0 +1,27 @@
+name: K8s 워커 프로비저닝
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '02.terraform/env/prod/tfvars/k8s-worker.tfvars'
+
+jobs:
+  provision:
+    runs-on: [self-hosted, control]
+    steps:
+      - name: 저장소 동기화
+        run: |
+          cd ~/kosa-final-project
+          git pull origin main
+
+      - name: 파일 동기화
+        run: |
+          rsync -a ~/kosa-final-project/02.terraform/ ~/terraform/
+          rsync -a ~/kosa-final-project/03.ansible/workspace/ ~/ansible/
+
+      - name: Terraform Apply
+        run: terraform -chdir=~/terraform/env/prod apply -var-file=tfvars/k8s-worker.tfvars -parallelism=1 -auto-approve
+
+      - name: Ansible K8s Join
+        run: ansible-playbook -i ~/ansible/inventories/prod/hosts ~/ansible/playbooks/k8s.yml

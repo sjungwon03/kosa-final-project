@@ -1,0 +1,63 @@
+---
+- name: 패키지 최신 업데이트
+  yum:
+    name: "*"
+    state: latest
+    update_cache: true
+
+- name: HAProxy 및 jq 설치
+  yum:
+    name:
+      - haproxy
+      - jq
+      - socat
+    state: present
+
+- name: HAProxy 설정 디렉토리 생성
+  file:
+    path: /etc/haproxy
+    state: directory
+    mode: '0755'
+
+- name: HAProxy ACL 디렉토리 생성
+  file:
+    path: /etc/haproxy/acl
+    state: directory
+    mode: '0755'
+
+- name: Cloudburst ACL 파일 생성
+  file:
+    path: /etc/haproxy/acl/cloudburst_active.txt
+    state: touch
+    mode: '0644'
+
+- name: HAProxy 설정 파일 배포
+  template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    mode: '0644'
+  notify: restart haproxy
+
+- name: HAProxy 서비스 활성화 및 시작
+  service:
+    name: haproxy
+    state: started
+    enabled: true
+
+- name: 방화벽 포트 개방 (firewalld)
+  firewalld:
+    port: "{{ item }}"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop:
+    - 80/tcp
+    - 443/tcp
+    - 8404/tcp
+    - "{{ db_proxy_port | default(3306) }}/tcp"
+  when: ansible_facts.services['firewalld.service'] is defined
+
+- name: firewalld 리로드
+  command: firewall-cmd --reload
+  when: ansible_facts.services['firewalld.service'] is defined
+  changed_when: false

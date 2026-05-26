@@ -1,0 +1,10 @@
+---
+- name: restart gitea
+  systemd:
+    name: gitea
+    state: restarted
+
+- name: restart act_runner
+  systemd:
+    name: act_runner
+    state: restarted

@@ -1,0 +1,10 @@
+---
+# playbooks/monitor.yml
+
+- name: 모니터링(PLG Stack) 서버 구성
+  hosts: monitoring_nodes
+  become: yes
+  roles:
+    - common
+    - docker_base
+    - monitor

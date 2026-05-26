@@ -1,0 +1,8 @@
+---
+- name: AWS HAProxy 배포
+  hosts: aws_haproxy
+  become: true
+  gather_facts: false
+
+  roles:
+    - aws_haproxy

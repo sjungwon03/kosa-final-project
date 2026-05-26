@@ -1,0 +1,6 @@
+---
+- name: MinIO (Terraform Backend) 설치
+  hosts: minio
+  roles:
+    - common
+    - minio

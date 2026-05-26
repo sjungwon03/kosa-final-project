@@ -1,0 +1,6 @@
+---
+- name: SIEM(Wazuh) 설치 및 설정
+  hosts: siem
+  roles:
+    - common
+    - siem

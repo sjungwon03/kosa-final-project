@@ -1,0 +1,9 @@
+#cloud-config
+users:
+  - name: kosa
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    passwd: "$6$nI3FH5oW/dIJwg9N$2plNkG8DqB8Ak7sg4lfRWYECOQUF4soem6tRMseZQXGsooSC/0IRsS.w2NvJmAfdRtT.w70fPQmC0vLBfNkkM."
+    lock_passwd: false
+    shell: /bin/bash
+ssh_pwauth: true
+package_update: false

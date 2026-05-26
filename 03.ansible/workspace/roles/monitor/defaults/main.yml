@@ -1,0 +1,10 @@
+---
+grafana_admin_password: "kosa1004"
+prometheus_retention: "15d"
+loki_retention: "720h"
+
+wazuh_indexer_url: "https://172.16.30.85:9200"
+wazuh_indexer_user: "admin"
+wazuh_indexer_password: "kosa1004"
+wazuh_indexer_index: "wazuh-alerts-*"
+wazuh_indexer_time_field: "@timestamp"

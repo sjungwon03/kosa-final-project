@@ -1,0 +1,53 @@
+---
+# roles/haproxy/tasks/main.yml
+
+- name: apt 잠금 해제 대기 (최대 60초)
+  shell: |
+    for i in $(seq 1 12); do
+      if ! lsof /var/lib/apt/lists/lock > /dev/null 2>&1; then
+        exit 0
+      fi
+      sleep 5
+    done
+    exit 1
+  changed_when: false
+
+- name: apt 캐시 업데이트
+  apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: HAProxy 및 Keepalived 설치
+  apt:
+    name:
+      - haproxy
+      - keepalived
+    state: present
+
+- name: HAProxy 설정 파일 적용
+  template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+  notify: restart haproxy
+
+- name: Keepalived 설정 파일 적용
+  template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+  notify: restart keepalived
+
+- name: 커널 비로컬 바인딩 허용 (VIP 바인딩용)
+  sysctl:
+    name: net.ipv4.ip_nonlocal_bind
+    value: '1'
+    state: present
+  # value: '1' 인데 괄호 오타 수정
+
+- name: 서비스 활성화 및 시작
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - haproxy
+    - keepalived

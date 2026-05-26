@@ -1,0 +1,36 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://172.16.30.90:9090
+    isDefault: true
+    editable: true
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://172.16.30.90:3100
+    isDefault: false
+    editable: true
+
+  - name: Wazuh Indexer
+    uid: wazuh-indexer
+    type: grafana-opensearch-datasource
+    access: proxy
+    url: "{{ wazuh_indexer_url }}"
+    basicAuth: true
+    basicAuthUser: "{{ wazuh_indexer_user }}"
+    secureJsonData:
+      basicAuthPassword: "{{ wazuh_indexer_password }}"
+    jsonData:
+      flavor: opensearch
+      database: "{{ wazuh_indexer_index }}"
+      timeField: "{{ wazuh_indexer_time_field }}"
+      version: "2.8.0"
+      pplEnabled: true
+      serverless: false
+      tlsSkipVerify: true
+    isDefault: false
+    editable: true

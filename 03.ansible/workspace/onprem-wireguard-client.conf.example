@@ -1,0 +1,28 @@
+# 온프렘 WireGuard 클라이언트 설정 템플릿
+# 파일: /etc/wireguard/wg0.conf
+
+[Interface]
+Address = 10.100.0.2/24
+PrivateKey = <ONPREM_PRIVATE_KEY>
+ListenPort = 51820
+
+[Peer]
+PublicKey = <AWS_VPN_PUBLIC_KEY>
+Endpoint = <AWS_VPN_EIP>:51820
+AllowedIPs = 10.0.0.0/16
+PersistentKeepalive = 25
+
+# 설정 방법:
+# 1. 온프렘 서버에서 키 생성:
+#    wg genkey | tee private.key | wg pubkey > public.key
+#
+# 2. private.key 내용을 위의 <ONPREM_PRIVATE_KEY>에 입력
+#
+# 3. public.key 내용을 AWS vault_onprem_peer_public_key에 설정
+#
+# 4. AWS VPN 배포 후 출력된 public key를 <AWS_VPN_PUBLIC_KEY>에 입력
+#
+# 5. AWS VPN EIP를 <AWS_VPN_EIP>에 입력
+#
+# 6. WireGuard 시작:
+#    wg-quick up wg0

@@ -1,0 +1,14 @@
+---
+vault_aws_haproxy_1_ip: "3.36.54.116"
+vault_aws_haproxy_2_ip: "16.184.31.34"
+vault_haproxy_stats_pass: "XQSrpHBed0e1JuIN"
+vault_ssh_key_path: "/Users/sloki9637/Dev/kosa-final-project/02.terraform/modules/aws/keypair/kosa-proxy-key.pem"
+
+vault_onprem_cidr: "172.16.0.0/12"
+
+vault_db_ip: "172.16.30.100"
+vault_db_port: 3306
+vault_db_user: "root"
+vault_db_password: "kosa1004"
+
+vault_prometheus_url: "http://172.16.30.50:9090"

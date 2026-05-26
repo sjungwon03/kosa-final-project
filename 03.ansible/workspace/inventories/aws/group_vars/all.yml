@@ -1,0 +1,10 @@
+---
+vault_aws_haproxy_1_ip: "3.36.54.116"
+vault_aws_haproxy_2_ip: "16.184.31.34"
+vault_haproxy_stats_pass: "zWpiRudOuGVmIK1R"
+vault_ssh_key_path: "../../02.terraform/modules/aws/keypair/kosa-proxy-key.pem"
+
+vault_onprem_cidr: "172.16.0.0/12"
+
+vault_eks_ingress_ip: "WILL_BE_SET_AFTER_EKS_DEPLOY"
+vault_prometheus_url: "http://172.16.30.50:9090"

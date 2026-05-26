@@ -1,0 +1,18 @@
+---
+# k8s_worker: 클러스터 join
+# 대상: k8s_workers
+
+- name: 이미 클러스터에 조인되어 있는지 확인
+  stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: worker_joined
+
+- name: 첫 번째 마스터에서 join 커맨드 생성
+  command: kubeadm token create --print-join-command
+  register: join_command_raw
+  delegate_to: "{{ groups['k8s_masters'][0] }}"
+  when: not worker_joined.stat.exists
+
+- name: kubeadm join 실행
+  command: "{{ join_command_raw.stdout }}"
+  when: not worker_joined.stat.exists

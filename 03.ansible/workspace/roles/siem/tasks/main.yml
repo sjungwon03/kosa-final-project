@@ -1,0 +1,210 @@
+---
+# siem: Wazuh Manager + Indexer + Dashboard (단일 노드)
+
+# ── Wazuh apt 저장소 ──────────────────────────────────────────
+- name: Wazuh GPG 키 등록
+  apt_key:
+    url: https://packages.wazuh.com/key/GPG-KEY-WAZUH
+    state: present
+
+- name: Wazuh apt 저장소 등록
+  apt_repository:
+    repo: "deb https://packages.wazuh.com/4.x/apt/ stable main"
+    state: present
+
+- name: apt 캐시 업데이트
+  apt:
+    update_cache: true
+
+# ── Wazuh 인증서 생성 ─────────────────────────────────────────
+- name: wazuh-certs-tool 디렉토리 생성
+  file:
+    path: /tmp/wazuh-certs
+    state: directory
+    mode: '0755'
+  tags: certs
+
+- name: wazuh-certs-tool.sh 다운로드
+  get_url:
+    url: https://packages.wazuh.com/4.7/wazuh-certs-tool.sh
+    dest: /tmp/wazuh-certs/wazuh-certs-tool.sh
+    mode: '0755'
+  tags: certs
+
+- name: 인증서 설정 파일 생성 (configs.yml)
+  copy:
+    dest: /tmp/wazuh-certs/configs.yml
+    content: |
+      nodes:
+        - name: "{{ wazuh_indexer_node_name | default('node-1') }}"
+          ip: "{{ wazuh_indexer_ip }}"
+          role: indexer
+        - name: "{{ wazuh_dashboard_node_name | default('dashboard') }}"
+          ip: "{{ wazuh_dashboard_ip | default(wazuh_indexer_ip) }}"
+          role: dashboard
+    mode: '0644'
+  tags: certs
+
+- name: 인증서 생성 실행
+  shell: |
+    cd /tmp/wazuh-certs
+    ./wazuh-certs-tool.sh --nodes-config configs.yml
+  args:
+    creates: /tmp/wazuh-certs/wazuh-certificates
+  tags: certs
+
+- name: Wazuh Indexer 인증서 디렉토리 생성
+  file:
+    path: /etc/wazuh-indexer/certs
+    state: directory
+    owner: wazuh-indexer
+    group: wazuh-indexer
+    mode: '0500'
+  tags: certs
+
+- name: Indexer 인증서 복사
+  copy:
+    src: "/tmp/wazuh-certs/wazuh-certificates/{{ item }}"
+    dest: "/etc/wazuh-indexer/certs/{{ item }}"
+    owner: wazuh-indexer
+    group: wazuh-indexer
+    mode: '0400'
+    remote_src: true
+  loop:
+    - root-ca.pem
+    - root-ca.key
+    - "{{ wazuh_indexer_node_name | default('node-1') }}-key.pem"
+    - "{{ wazuh_indexer_node_name | default('node-1') }}.pem"
+    - admin-key.pem
+    - admin.pem
+  tags: certs
+
+- name: Indexer 인증서 파일명 표준화
+  shell: |
+    cd /etc/wazuh-indexer/certs
+    [ -f "{{ wazuh_indexer_node_name | default('node-1') }}-key.pem" ] && mv "{{ wazuh_indexer_node_name | default('node-1') }}-key.pem" indexer-key.pem || true
+    [ -f "{{ wazuh_indexer_node_name | default('node-1') }}.pem" ] && mv "{{ wazuh_indexer_node_name | default('node-1') }}.pem" indexer.pem || true
+  changed_when: true
+  tags: certs
+
+- name: Wazuh Dashboard 인증서 디렉토리 생성
+  file:
+    path: /etc/wazuh-dashboard/certs
+    state: directory
+    owner: wazuh-dashboard
+    group: wazuh-dashboard
+    mode: '0500'
+  tags: certs
+
+- name: Dashboard 인증서 복사
+  copy:
+    src: "/tmp/wazuh-certs/wazuh-certificates/{{ item.src }}"
+    dest: "/etc/wazuh-dashboard/certs/{{ item.dest }}"
+    owner: wazuh-dashboard
+    group: wazuh-dashboard
+    mode: '0400'
+    remote_src: true
+  loop:
+    - { src: 'root-ca.pem', dest: 'root-ca.pem' }
+    - { src: "{{ wazuh_dashboard_node_name | default('dashboard') }}-key.pem", dest: 'dashboard-key.pem' }
+    - { src: "{{ wazuh_dashboard_node_name | default('dashboard') }}.pem", dest: 'dashboard.pem' }
+  tags: certs
+
+- name: 인증서 정리
+  file:
+    path: /tmp/wazuh-certs
+    state: absent
+  tags: certs
+
+# ── Wazuh Indexer (OpenSearch 기반) ───────────────────────────
+- name: Wazuh Indexer 설치
+  apt:
+    name: "wazuh-indexer={{ wazuh_indexer_version }}-1"
+    state: present
+    allow_unauthenticated: true
+
+- name: Wazuh Indexer 디렉토리 확인
+  file:
+    path: /etc/wazuh-indexer
+    state: directory
+    mode: '0755'
+
+- name: Wazuh Indexer 활성화 및 시작
+  systemd:
+    name: wazuh-indexer
+    enabled: true
+    state: started
+
+- name: Wazuh Indexer 시작 대기
+  wait_for:
+    port: 9200
+    host: "{{ wazuh_indexer_ip }}"
+    timeout: 120
+
+- name: Admin password hash 생성
+  shell: "/usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p '{{ wazuh_indexer_admin_password }}' 2>/dev/null || echo 'hash_failed'"
+  register: admin_hash
+  changed_when: false
+  failed_when: false
+
+- name: Internal users.yml 수정 (admin password)
+  lineinfile:
+    path: /etc/wazuh-indexer/opensearch-security/internal_users.yml
+    regexp: '^\s+hash:'
+    line: "  hash: \"{{ admin_hash.stdout }}\""
+    insertafter: '^admin:'
+  when: admin_hash.stdout != 'hash_failed'
+
+- name: Security 설정 적용
+  shell: "JAVA_HOME=/usr/share/wazuh-indexer/jdk /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh -cd /etc/wazuh-indexer/opensearch-security/ -icl -nhnv -cacert /etc/wazuh-indexer/certs/root-ca.pem -cert /etc/wazuh-indexer/certs/admin.pem -key /etc/wazuh-indexer/certs/admin-key.pem"
+  when: admin_hash.stdout != 'hash_failed'
+  changed_when: true
+
+- name: Wazuh Indexer 재시작
+  systemd:
+    name: wazuh-indexer
+    state: restarted
+  when: admin_hash.stdout != 'hash_failed'
+
+# ── Wazuh Manager ─────────────────────────────────────────────
+- name: Wazuh Manager 설치
+  apt:
+    name: "wazuh-manager={{ wazuh_manager_version }}-1"
+    state: present
+    allow_unauthenticated: true
+
+- name: Wazuh Manager 활성화 및 시작
+  systemd:
+    name: wazuh-manager
+    enabled: true
+    state: started
+
+# ── Wazuh Dashboard ───────────────────────────────────────────
+- name: Wazuh Dashboard 설정 파일 수정
+  lineinfile:
+    path: /etc/wazuh-dashboard/opensearch_dashboards.yml
+    regexp: 'opensearch.password:'
+    line: "opensearch.password: \"{{ wazuh_indexer_admin_password }}\""
+  when: admin_hash.stdout != 'hash_failed'
+
+- name: Wazuh Dashboard 설치
+  apt:
+    name: "wazuh-dashboard={{ wazuh_dashboard_version }}-1"
+    state: present
+    allow_unauthenticated: true
+
+- name: Wazuh Dashboard 활성화 및 시작
+  systemd:
+    name: wazuh-dashboard
+    enabled: true
+    state: started
+
+# ── 에이전트 버전 핀 고정 (업그레이드 방지) ───────────────────
+- name: Wazuh 패키지 버전 고정
+  dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+    - wazuh-manager
+    - wazuh-indexer
+    - wazuh-dashboard

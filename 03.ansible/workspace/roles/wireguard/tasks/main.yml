@@ -1,0 +1,62 @@
+---
+- name: WireGuard 설치
+  yum:
+    name: wireguard-tools
+    state: present
+
+- name: WireGuard 디렉토리 생성
+  file:
+    path: /etc/wireguard
+    state: directory
+    mode: '0700'
+
+- name: WireGuard 키 생성
+  shell: |
+    wg genkey | tee /etc/wireguard/private.key | wg pubkey > /etc/wireguard/public.key
+    chmod 600 /etc/wireguard/private.key
+    chmod 644 /etc/wireguard/public.key
+  args:
+    creates: /etc/wireguard/private.key
+
+- name: 공개 키 읽기
+  slurp:
+    src: /etc/wireguard/public.key
+  register: wireguard_public_key
+
+- name: WireGuard 설정 파일 생성
+  template:
+    src: wg0.conf.j2
+    dest: /etc/wireguard/wg0.conf
+    mode: '0600'
+  notify: restart wireguard
+
+- name: WireGuard 서비스 활성화
+  service:
+    name: wg-quick@wg0
+    state: started
+    enabled: true
+
+- name: IP forwarding 활성화
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    state: present
+    reload: true
+
+- name: NAT 규칙 추가
+  iptables:
+    table: nat
+    chain: POSTROUTING
+    source: "{{ wireguard_subnet }}"
+    out_interface: eth0
+    jump: MASQUERADE
+    state: present
+
+- name: iptables 규칙 저장
+  shell: iptables-save > /etc/sysconfig/iptables
+  changed_when: false
+
+- name: WireGuard 공개 키 출력
+  debug:
+    msg: "WireGuard Public Key: {{ wireguard_public_key.content | b64decode | trim }}"
+  when: wireguard_public_key is defined

@@ -1,0 +1,15 @@
+---
+- name: restart wazuh-manager
+  systemd:
+    name: wazuh-manager
+    state: restarted
+
+- name: restart wazuh-indexer
+  systemd:
+    name: wazuh-indexer
+    state: restarted
+
+- name: restart wazuh-dashboard
+  systemd:
+    name: wazuh-dashboard
+    state: restarted

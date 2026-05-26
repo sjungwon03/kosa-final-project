@@ -1,0 +1,37 @@
+[dns_servers]
+172.16.30.210 keepalived_state=MASTER keepalived_priority=101
+172.16.30.211 keepalived_state=BACKUP keepalived_priority=100
+
+[vault]
+172.16.30.215
+
+[loadbalancers]
+# 필요 시 추가
+
+[k8s_masters]
+172.16.30.200 keepalived_state=MASTER keepalived_priority=101
+172.16.30.201 keepalived_state=BACKUP keepalived_priority=100
+
+[k8s_workers]
+172.16.30.205
+172.16.30.207
+172.16.30.209
+
+[registry]
+# 필요 시 추가
+
+[cicd]
+# 필요 시 추가
+
+[siem]
+172.16.30.85
+
+[monitoring_nodes]
+# 필요 시 추가
+
+[control]
+172.16.30.7
+
+[k8s_cluster:children]
+k8s_masters
+k8s_workers

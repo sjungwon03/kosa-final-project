@@ -1,0 +1,21 @@
+---
+# ops/sync.yml — 전체 설정 동기화 (Configuration Drift 방지)
+# 운영 중 누군가 서버를 직접 수정했을 경우, 앤서블 코드 기준으로 다시 맞춤
+# 사용법: ansible-playbook playbooks/ops/sync.yml -i inventories/prod/hosts
+- name: 로드밸런서 설정 동기화
+  hosts: loadbalancers
+  become: true
+  roles:
+    - haproxy
+
+- name: DNS 설정 동기화
+  hosts: dns_servers
+  become: true
+  roles:
+    - dns
+
+- name: K8s 공통 설정 동기화
+  hosts: k8s_cluster
+  become: true
+  roles:
+    - k8s_common

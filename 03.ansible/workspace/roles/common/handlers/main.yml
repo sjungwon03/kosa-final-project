@@ -1,0 +1,15 @@
+---
+- name: restart sshd
+  systemd:
+    name: ssh
+    state: restarted
+
+- name: restart promtail
+  systemd:
+    name: promtail
+    state: restarted
+
+- name: restart wazuh-agent
+  systemd:
+    name: wazuh-agent
+    state: restarted

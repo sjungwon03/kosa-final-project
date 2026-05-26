@@ -1,0 +1,6 @@
+---
+- name: HAProxy 구성
+  hosts: loadbalancers
+  roles:
+    - common
+    - haproxy

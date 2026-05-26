@@ -1,0 +1,20 @@
+---
+# roles/haproxy/defaults/main.yml
+# 임시.md 기반 prod 구성
+
+# Keepalived 설정 (VLAN 20 대역)
+keepalived_vip: "172.16.20.25"
+keepalived_interface: "eth0"
+keepalived_router_id: 25
+keepalived_auth_pass: "changeme"  # TODO: group_vars/loadbalancers.yml에서 반드시 override
+
+# HAProxy 설정
+haproxy_stats_port: 9000
+haproxy_stats_user: "admin"
+haproxy_stats_pass: "changeme"  # TODO: group_vars/loadbalancers.yml에서 반드시 override
+
+# K8s API 백엔드 마스터 (VLAN 30 대역)
+k8s_masters:
+  - { name: "master-01", ip: "172.16.30.30" }
+  - { name: "master-02", ip: "172.16.30.31" }
+  - { name: "master-03", ip: "172.16.30.32" }
