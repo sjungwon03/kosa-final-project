@@ -4,7 +4,7 @@ import os
 import subprocess
 import requests
 
-from flask import Flask, render_template, render_template_string, url_for, redirect, flash, g
+from flask import Flask, render_template, render_template_string, url_for, redirect, flash, g, Response
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField
 from wtforms import StringField, HiddenField, validators
@@ -14,8 +14,11 @@ import config
 import util
 
 def get_instance_document():
+    if os.environ.get("SKIP_INSTANCE_METADATA", "true").lower() == "true":
+        return { "availabilityZone" : "kubernetes",  "instanceId" : "pod" }
+
     try:
-        r = requests.get("http://169.254.169.254/latest/dynamic/instance-identity/document")
+        r = requests.get("http://169.254.169.254/latest/dynamic/instance-identity/document", timeout=1)
         if r.status_code == 401:
             token=(
                 requests.put(
@@ -48,19 +51,31 @@ availablity_zone = doc["availabilityZone"]
 instance_id = doc["instanceId"]
 
 badges = {
-    "apple" : "Mac User",
-    "windows" : "Windows User",
-    "linux" : "Linux User",
-    "video-camera" : "Digital Content Star",
-    "trophy" : "Employee of the Month",
-    "camera" : "Photographer",
-    "plane" : "Frequent Flier",
-    "paperclip" : "Paperclip Afficionado",
-    "coffee" : "Coffee Snob",
-    "gamepad" : "Gamer",
-    "bug" : "Bugfixer",
-    "umbrella" : "Seattle Fan",
+    "apple": "Mac User",
+    "windows": "Windows User",
+    "linux": "Linux User",
+    "camera-video": "Digital Content Star",
+    "trophy": "Employee of the Month",
+    "camera": "Photographer",
+    "airplane": "Frequent Flier",
+    "paperclip": "Paperclip Fan",
+    "cup-hot": "Coffee Snob",
+    "controller": "Gamer",
+    "bug": "Bugfixer",
+    "umbrella": "Seattle Fan",
 }
+
+def get_s3_client():
+    "Build an S3 client using the configured endpoint when provided"
+    kwargs = {}
+    if config.S3_ENDPOINT_URL:
+        kwargs["endpoint_url"] = config.S3_ENDPOINT_URL
+    return boto3.client('s3', **kwargs)
+
+def set_photo_url(employee):
+    "Attach an app-served photo URL for templates"
+    if employee and "object_key" in employee and employee["object_key"]:
+        employee["photo_url"] = url_for("photo", employee_id=employee["id"])
 
 ### FlaskForm set up
 class EmployeeForm(FlaskForm):
@@ -81,59 +96,95 @@ def before_request():
 @application.route("/")
 def home():
     "Home screen"
-    s3_client = boto3.client('s3')
-    employees = database.list_employees()
-    if employees == 0:
+    try:
+        employees = database.list_employees()
+    except Exception as exc:
+        print(f" * Database unavailable: {exc}")
+        employees = []
+
+    if not employees:
         return render_template_string("""        
         {% extends "main.html" %}
         {% block head %}
-        Employee Directory - Home
-        <a class="btn btn-primary float-right" href="{{ url_for('add') }}">Add</a>
+        <div class="employee-toolbar">
+          <div class="employee-toolbar__title">
+            Team Directory
+            <span>Manage people, roles, and profile photos</span>
+          </div>
+          <a class="btn btn-primary" href="{{ url_for('add') }}"><i class="bi bi-plus-lg"></i> Add Employee</a>
+        </div>
+        {% endblock %}
+        {% block body %}
+        <div class="empty-state">
+          <i class="bi bi-address-book"></i>
+          <h3>No employees yet</h3>
+          <p>Add the first employee to start building the directory.</p>
+        </div>
         {% endblock %}
         """)
     else:
         for employee in employees:
-            try:
-                if "object_key" in employee and employee["object_key"]:
-                    employee["signed_url"] = s3_client.generate_presigned_url(
-                        'get_object',
-                        Params={'Bucket': config.PHOTOS_BUCKET, 'Key': employee["object_key"]}
-                    )
-            except: 
-                pass
+            set_photo_url(employee)
 
     return render_template_string("""
         {% extends "main.html" %}
         {% block head %}
-        Employee Directory - Home
-        <a class="btn btn-primary float-right" href="{{ url_for('add') }}">Add</a>
+        <div class="employee-toolbar">
+          <div class="employee-toolbar__title">
+            Team Directory
+            <span>{{ employees|length }} employee{% if employees|length != 1 %}s{% endif %} in the directory</span>
+          </div>
+          <div class="toolbar-actions">
+            <label class="search-box">
+              <i class="bi bi-search"></i>
+              <input id="employeeSearch" type="search" placeholder="Search people...">
+            </label>
+            <a class="btn btn-primary" href="{{ url_for('add') }}"><i class="bi bi-plus-lg"></i> Add Employee</a>
+          </div>
+        </div>
         {% endblock %}
         {% block body %}
-            {%  if not employees %}<h4>Empty Directory</h4>{% endif %}
-
-            <table class="table table-bordered">
-              <tbody>
+            <div class="directory-summary">
+              <div>
+                <span class="summary-label">Directory status</span>
+                <strong>Live</strong>
+              </div>
+              <div>
+                <span class="summary-label">Profiles</span>
+                <strong>{{ employees|length }}</strong>
+              </div>
+              <div>
+                <span class="summary-label">Storage</span>
+                <strong>S3</strong>
+              </div>
+            </div>
+            <div class="employee-list">
             {% for employee in employees %}
-                <tr>
-                  <td width="100">{% if employee.signed_url %}
-                  <img width="50" src="{{employee.signed_url}}" /><br/>
+                <article class="employee-row" data-search="{{ employee.full_name }} {{ employee.job_title }} {{ employee.location }} {{ employee.badges }}">
+                  {% if employee.photo_url %}
+                  <img class="employee-photo" src="{{employee.photo_url}}" alt="{{employee.full_name}}">
+                  {% else %}
+                  <div class="employee-photo photo-placeholder"><i class="bi bi-person-fill"></i></div>
                   {% endif %}
-                  <a href="{{ url_for('delete', employee_id=employee.id) }}"><span class="fa fa-remove" aria-hidden="true"></span> delete</a>
-                  </td>
-                  <td><a href="{{ url_for('view', employee_id=employee.id) }}">{{employee.full_name}}</a>
+                  <div class="employee-info">
+                    <h3 class="employee-name"><a href="{{ url_for('view', employee_id=employee.id) }}">{{employee.full_name}}</a></h3>
+                    <div class="employee-meta"><i class="bi bi-briefcase"></i> {{employee.job_title}} · <i class="bi bi-geo-alt"></i> {{employee.location}}</div>
+                    <div class="employee-badges">
                   {% for badge in badges %}
                   {% if badge in employee['badges'] %}
-                  <i class="fa fa-{{badge}}" title="{{badges[badge]}}"></i>
+                  <span class="badge-pill"><i class="bi bi-{{badge}}"></i> {{badges[badge]}}</span>
                   {% endif %}
                   {% endfor %}
-                  <br/>
-                  <small>{{employee.location}}</small>
-                  </td>
-                </tr>
+                    </div>
+                  </div>
+                  <div class="row-actions">
+                    <a class="icon-button" href="{{ url_for('view', employee_id=employee.id) }}" title="View"><i class="bi bi-eye"></i></a>
+                    <a class="icon-button" href="{{ url_for('edit', employee_id=employee.id) }}" title="Edit"><i class="bi bi-pencil"></i></a>
+                    <a class="icon-button icon-button--danger" href="{{ url_for('delete', employee_id=employee.id) }}" title="Delete"><i class="bi bi-trash"></i></a>
+                  </div>
+                </article>
             {% endfor %}
-
-              </tbody>
-            </table>
+            </div>
 
         {% endblock %}
     """, employees=employees, badges=badges)
@@ -147,14 +198,10 @@ def add():
 @application.route("/edit/<employee_id>")
 def edit(employee_id):
     "Edit an employee"
-    s3_client = boto3.client('s3')
     employee = database.load_employee(employee_id)
     signed_url = None
     if "object_key" in employee and employee["object_key"]:
-        signed_url = s3_client.generate_presigned_url(
-            'get_object',
-            Params={'Bucket': config.PHOTOS_BUCKET, 'Key': employee["object_key"]}
-        )
+        signed_url = url_for("photo", employee_id=employee["id"])
 
     form = EmployeeForm()
     form.employee_id.data = employee['id']
@@ -170,7 +217,7 @@ def edit(employee_id):
 def save():
     "Save an employee"
     form = EmployeeForm()
-    s3_client = boto3.client('s3')
+    s3_client = get_s3_client()
     key = None
     if form.validate_on_submit():
         if form.photo.data:
@@ -186,8 +233,9 @@ def save():
                         Body=image_bytes,
                         ContentType='image/png'
                     )
-                except:
-                    pass
+                except Exception as exc:
+                    print(f" * Failed to upload employee photo to S3: {exc}")
+                    flash("Photo upload failed. Employee information was saved without a photo.")
         
         if form.employee_id.data:
             database.update_employee(
@@ -212,60 +260,77 @@ def save():
 @application.route("/employee/<employee_id>")
 def view(employee_id):
     "View an employee"
-    s3_client = boto3.client('s3')
     employee = database.load_employee(employee_id)
-    if "object_key" in employee and employee["object_key"]:
-        try:
-            employee["signed_url"] = s3_client.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': config.PHOTOS_BUCKET, 'Key': employee["object_key"]}
-            )
-        except:
-            pass
+    set_photo_url(employee)
     form = EmployeeForm()
 
     return render_template_string("""
         {% extends "main.html" %}
         {% block head %}
+        <div class="employee-toolbar">
+          <div class="employee-toolbar__title">
             {{employee.full_name}}
-            <a class="btn btn-primary float-right" href="{{ url_for("edit", employee_id=employee.id) }}">Edit</a>
-            <a class="btn btn-primary float-right" href="{{ url_for('home') }}">Home</a>
+            <span>Employee profile</span>
+          </div>
+          <div>
+            <a class="btn btn-ghost" href="{{ url_for('home') }}"><i class="bi bi-arrow-left"></i> Home</a>
+            <a class="btn btn-primary" href="{{ url_for("edit", employee_id=employee.id) }}"><i class="bi bi-pencil"></i> Edit</a>
+          </div>
+        </div>
         {% endblock %}
         {% block body %}
-
-  <div class="row">
-    <div class="col-md-4">
-        {% if employee.signed_url %}
-        <img alt="Mugshot" src="{{ employee.signed_url }}" />
+  <div class="profile-layout">
+    <div>
+        {% if employee.photo_url %}
+        <img class="profile-photo" alt="{{ employee.full_name }}" src="{{ employee.photo_url }}" />
+        {% else %}
+        <div class="profile-photo photo-placeholder"><i class="bi bi-person-fill"></i></div>
         {% endif %}
     </div>
 
-    <div class="col-md-8">
-      <div class="form-group row">
-        <label class="col-sm-2">{{form.location.label}}</label>
-        <div class="col-sm-10">
-        {{employee.location}}
-        </div>
+    <div class="detail-list">
+      <div class="detail-item">
+        <span class="detail-label"><i class="bi bi-geo-alt"></i> Location</span>
+        <div class="detail-value">{{employee.location}}</div>
       </div>
-      <div class="form-group row">
-        <label class="col-sm-2">{{form.job_title.label}}</label>
-        <div class="col-sm-10">
-        {{employee.job_title}}
-        </div>
+      <div class="detail-item">
+        <span class="detail-label"><i class="bi bi-briefcase"></i> Job Title</span>
+        <div class="detail-value">{{employee.job_title}}</div>
       </div>
+      <div class="detail-item">
+        <span class="detail-label"><i class="bi bi-award"></i> Badges</span>
+        <div class="detail-value">
       {% for badge in badges %}
-      <div class="form-check">
         {% if badge in employee['badges'] %}
-        <span class="badge badge-primary"><i class="fa fa-{{badge}}"></i> {{badges[badge]}}</span>
+        <span class="badge-pill"><i class="bi bi-{{badge}}"></i> {{badges[badge]}}</span>
         {% endif %}
-      </div>
       {% endfor %}
-      &nbsp;
+        </div>
+      </div>
     </div>
   </div>
-</form>
         {% endblock %}
     """, form=form, employee=employee, badges=badges)
+
+@application.route("/photo/<employee_id>")
+def photo(employee_id):
+    "Serve an employee photo from S3 through the app"
+    employee = database.load_employee(employee_id)
+    if not employee or not employee.get("object_key"):
+        return ("Not found", 404)
+
+    try:
+        s3_object = get_s3_client().get_object(
+            Bucket=config.PHOTOS_BUCKET,
+            Key=employee["object_key"],
+        )
+        return Response(
+            s3_object["Body"].read(),
+            mimetype=s3_object.get("ContentType", "image/png"),
+        )
+    except Exception as exc:
+        print(f" * Failed to load employee photo from S3: {exc}")
+        return ("Not found", 404)
 
 @application.route("/delete/<employee_id>")
 def delete(employee_id):
@@ -277,21 +342,11 @@ def delete(employee_id):
 @application.route("/info")
 def info():
     "Webserver info route"
-    return render_template_string("""
-            {% extends "main.html" %}
-            {% block head %}
-                인스턴스 정보
-            {% endblock %}
-            {% block body %}
-            <b>인스턴스 아이디</b>: {{g.instance_id}} <br/>
-            <b>가용 영역</b>: {{g.availablity_zone}} <br/>
-            <hr/>
-            <small>스트레스 CPU:
-            <a href="{{ url_for('stress', seconds=60) }}">1 min</a>,
-            <a href="{{ url_for('stress', seconds=300) }}">5 min</a>,
-            <a href="{{ url_for('stress', seconds=600) }}">10 min</a>
-            </small>
-            {% endblock %}""")
+    return {
+        "status": "ok",
+        "instance_id": g.instance_id,
+        "availability_zone": g.availablity_zone,
+    }
 
 @application.route("/info/stress_cpu/<seconds>")
 def stress(seconds):

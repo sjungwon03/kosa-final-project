@@ -1,58 +1,84 @@
 {% extends "main.html" %}
 {% block head %}
-Employee Directory
+<div class="employee-toolbar">
+  <div class="employee-toolbar__title">
+    <h1>Employee Profile</h1>
+    <span>Add or update employee information</span>
+  </div>
+  <a class="btn btn-ghost" href="{{ url_for('home') }}">
+    <i class="bi bi-arrow-left"></i> Back
+  </a>
+</div>
 {% endblock %}
 {% block body %}
 <form method="POST" enctype="multipart/form-data" action="{{ url_for('save') }}">
-{{ form.csrf_token }}
-{{ form.employee_id(class="form-control") }}
-<div class="row">
-<div class="col-md-4">
-{% if signed_url %}
-<img alt="Mugshot" src="{{ signed_url }}" />
-{% endif %}
-{{ form.photo() }}
-</div>
+  {{ form.csrf_token }}
+  {{ form.employee_id() }}
 
-<div class="col-md-8">
-<div class="form-group row">
-<label class="col-sm-2">{{form.full_name.label}}</label>
-<div class="col-sm-10">
-{{ form.full_name(class="form-control", autocomplete="off") }}
-</div>
-</div>
-<div class="form-group row">
-<label class="col-sm-2">{{form.location.label}}</label>
-<div class="col-sm-10">
-{{ form.location(class="form-control", autocomplete="off") }}
-</div>
-</div>
-<div class="form-group row">
-<label class="col-sm-2">{{form.job_title.label}}</label>
-<div class="col-sm-10">
-{{ form.job_title(class="form-control", autocomplete="off") }}
-</div>
-</div>
-<div class="form-group row">
-<div class="col-sm-10">
-{{ form.badges(class="form-control") }}
-</div>
-</div>
-{% for badge in badges %}
-<div class="form-check">
-<input class="form-check-input corp-badge" type="checkbox" value="" id="{{badge}}" {% if form.badges.data and badge in form.badges.data %}checked{% endif %}/>
-<label class="form-check-label" for="{{badge}}">
-  <span class="badge badge-primary"><i class="fa fa-{{badge}}"></i> {{badges[badge]}}</span>
-</label>
-</div>
-{% endfor %}
-&nbsp;
-<div class="control-group">
-<div class="controls">
-  <input class="btn btn-primary" type="submit" value="Save">
-</div>
-</div>
-</div>
-</div>
+  <div class="form-card">
+    <div class="photo-uploader">
+      <div class="photo-preview">
+        {% if signed_url %}
+        <img alt="Employee photo" src="{{ signed_url }}" />
+        {% else %}
+        <div class="photo-placeholder">
+          <i class="bi bi-person-fill"></i>
+        </div>
+        {% endif %}
+      </div>
+      <label class="upload-label" for="photo">
+        <i class="bi bi-camera-fill"></i>
+        <span>Upload Photo</span>
+      </label>
+      {{ form.photo(class="form-control-file", accept="image/*") }}
+    </div>
+
+    <div class="form-fields">
+      <div class="form-group">
+        <label for="full_name">
+          <i class="bi bi-person"></i> Full Name
+        </label>
+        {{ form.full_name(class="form-control", autocomplete="off", placeholder="Enter full name") }}
+      </div>
+
+      <div class="form-group">
+        <label for="location">
+          <i class="bi bi-geo-alt"></i> Location
+        </label>
+        {{ form.location(class="form-control", autocomplete="off", placeholder="Enter location") }}
+      </div>
+
+      <div class="form-group">
+        <label for="job_title">
+          <i class="bi bi-briefcase"></i> Job Title
+        </label>
+        {{ form.job_title(class="form-control", autocomplete="off", placeholder="Enter job title") }}
+      </div>
+
+      <div class="form-group">
+        <label>
+          <i class="bi bi-award"></i> Badges
+        </label>
+        <div class="badge-grid">
+          {% for badge in badges %}
+          <label class="badge-checkbox">
+            <input class="corp-badge" type="checkbox" value="" id="{{badge}}" {% if form.badges.data and badge in form.badges.data %}checked{% endif %}/>
+            <span class="badge-pill">
+              <i class="bi bi-{{badge}}"></i> {{badges[badge]}}
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+        {{ form.badges(class="form-control", type="hidden") }}
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn-primary" type="submit">
+          <i class="bi bi-check-lg"></i> Save Employee
+        </button>
+        <a class="btn btn-ghost" href="{{ url_for('home') }}">Cancel</a>
+      </div>
+    </div>
+  </div>
 </form>
 {% endblock %}

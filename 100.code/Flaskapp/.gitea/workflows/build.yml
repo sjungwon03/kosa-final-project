@@ -1,0 +1,79 @@
+name: Build and Push Docker Image to Harbor
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    container:
+      image: docker:27-cli
+
+    env:
+      DOCKER_HOST: tcp://localhost:2375
+      REGISTRY_PUSH: 172.16.30.204
+      REGISTRY_IMAGE: 172.16.30.204
+      PROJECT: flaskapp
+      IMAGE: flask-app
+      TARGET_BRANCH: release
+
+    steps:
+      - name: Build and Deploy
+        env:
+          TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          apk add --no-cache git
+
+          SERVER_URL="$GITHUB_SERVER_URL"
+          PROTOCOL="https"
+          if echo "$SERVER_URL" | grep -q '^http://'; then
+            PROTOCOL="http"
+            SERVER_URL="${SERVER_URL#http://}"
+          elif echo "$SERVER_URL" | grep -q '^https://'; then
+            SERVER_URL="${SERVER_URL#https://}"
+          fi
+          AUTH_REPO_URL="${PROTOCOL}://x-access-token:${TOKEN}@${SERVER_URL%/}/${GITHUB_REPOSITORY}"
+          
+          git clone "$AUTH_REPO_URL" repo
+          cd repo
+          git checkout ${{ github.sha }}
+          
+          docker version
+          docker info
+          
+          echo "${{ secrets.HARBOR_PASSWORD }}" | docker login $REGISTRY_PUSH \
+            -u "${{ secrets.HARBOR_USERNAME }}" \
+            --password-stdin
+          
+          docker build \
+            -t $REGISTRY_PUSH/$PROJECT/$IMAGE:${{ github.sha }} \
+            -t $REGISTRY_PUSH/$PROJECT/$IMAGE:latest \
+            .
+          
+          docker tag $REGISTRY_PUSH/$PROJECT/$IMAGE:${{ github.sha }} $REGISTRY_IMAGE/$PROJECT/$IMAGE:${{ github.sha }}
+          docker tag $REGISTRY_PUSH/$PROJECT/$IMAGE:latest $REGISTRY_IMAGE/$PROJECT/$IMAGE:latest
+
+          docker push $REGISTRY_PUSH/$PROJECT/$IMAGE:${{ github.sha }}
+          docker push $REGISTRY_PUSH/$PROJECT/$IMAGE:latest
+          
+          git fetch origin $TARGET_BRANCH
+          git checkout $TARGET_BRANCH
+          git pull --rebase origin $TARGET_BRANCH
+
+          sed -i "s|image:.*flask-app:.*|image: $REGISTRY_IMAGE/$PROJECT/$IMAGE:${{ github.sha }}|" k8s/deployment.yaml
+          
+          git remote set-url origin "$AUTH_REPO_URL"
+          git config user.name "gitea-actions[bot]"
+          git config user.email "gitea-actions[bot]@users.noreply.gitea.com"
+          git add k8s/deployment.yaml
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update image tag to ${{ github.sha }}"
+            git pull --rebase origin $TARGET_BRANCH
+            git push origin $TARGET_BRANCH
+          else
+            echo "No deployment manifest changes to push."
+          fi

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flaskapp-config
+data:
+  photos-bucket: "team4-webapp"
+  aws-default-region: "us-east-1"
+  s3-endpoint-url: "http://10.10.10.11:7480"
+  database-host: "172.16.30.206"
+  database-name: "flaskapp"

@@ -2,6 +2,7 @@
 import os
 
 PHOTOS_BUCKET = os.environ['PHOTOS_BUCKET']
+S3_ENDPOINT_URL = os.environ.get('S3_ENDPOINT_URL')
 FLASK_SECRET = "something-random"
 
 DATABASE_HOST = os.environ['DATABASE_HOST'] if 'DATABASE_HOST' in os.environ else None

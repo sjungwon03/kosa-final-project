@@ -1,47 +1,68 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Employee Directory</title>
-    <h1>Employee Directory</h1>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='app.css') }}" rel="stylesheet">
   </head>
   <body>
-    <div class="row">
-      <div class="col-md-12">
-        <div class="container-fluid">
-	{% with messages = get_flashed_messages() %}
-            {% if messages %}
-              {% for message in messages %}
-              <div class="alert alert-primary" role="alert">{{ message }}</div>
-              {% endfor %}
-            {% endif %}
-          {% endwith %}
-          <p></p>
-          <div class="card bg-default">
-            <h5 class="card-header">
-            {% block head %}
-            {% endblock %}
-            </h5>
-            <div class="card-body">
-            {% block body %}
-            {% endblock %}
-            </div>
-            <div class="card-footer small">
-            </div>
+    <div class="bg-decoration"></div>
+    <header class="app-header">
+      <div class="container app-shell">
+        <a class="brand" href="{{ url_for('home') }}">
+          <div class="brand-mark">
+            <i class="bi bi-people-fill"></i>
           </div>
-        </div>
+          <div class="brand-text">
+            <strong>Employee Directory</strong>
+            <span>People Operations</span>
+          </div>
+        </a>
       </div>
-    </div>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"></script>
-    <script>
+    </header>
 
+    <main class="container app-shell">
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="flash-stack">
+            {% for message in messages %}
+            <div class="alert alert-success">
+              <i class="bi bi-check-circle-fill"></i>
+              {{ message }}
+            </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <section class="page-panel">
+        <div class="page-panel__header">
+          {% block head %}
+          {% endblock %}
+        </div>
+        <div class="page-panel__body">
+          {% block body %}
+          {% endblock %}
+        </div>
+      </section>
+    </main>
+    
+    <footer class="app-footer">
+      <div class="container app-shell">
+        <p><i class="bi bi-geo-alt-fill"></i> AZ: {{ g.availablity_zone }} | Instance: {{ g.instance_id }}</p>
+      </div>
+    </footer>
+    
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script>
     $(function() {
-      $('.corp-badge').on( "click", function() {
+      $('.corp-badge').on("click", function() {
         var selectedIds = [];
         $(".corp-badge").each(function (idx, item) {
           if ($(item).is(":checked")) {
@@ -49,6 +70,14 @@
           }
         });
         $('#badges').val(selectedIds.join(","));
+      });
+
+      $('#employeeSearch').on('input', function() {
+        var query = $(this).val().toLowerCase();
+        $('.employee-row').each(function() {
+          var haystack = ($(this).data('search') || '').toString().toLowerCase();
+          $(this).toggle(haystack.indexOf(query) !== -1);
+        });
       });
     });
     </script>

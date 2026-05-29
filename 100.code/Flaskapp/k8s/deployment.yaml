@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flaskapp
+  labels:
+    app: flaskapp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: flaskapp
+  template:
+    metadata:
+      labels:
+        app: flaskapp
+    spec:
+      imagePullSecrets:
+      - name: harbor-regcred
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: flaskapp
+      containers:
+      - name: flaskapp
+        image: 172.16.30.204/flaskapp/flask-app:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        startupProbe:
+          httpGet:
+            path: /info
+            port: 80
+          failureThreshold: 30
+          periodSeconds: 2
+          timeoutSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /info
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /info
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+        env:
+        - name: FLASK_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: flaskapp-secret
+              key: flask-secret
+        - name: PHOTOS_BUCKET
+          valueFrom:
+            configMapKeyRef:
+              name: flaskapp-config
+              key: photos-bucket
+        - name: AWS_DEFAULT_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: flaskapp-config
+              key: aws-default-region
+        - name: S3_ENDPOINT_URL
+          valueFrom:
+            configMapKeyRef:
+              name: flaskapp-config
+              key: s3-endpoint-url
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: flaskapp-secret
+              key: aws-access-key-id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: flaskapp-secret
+              key: aws-secret-access-key
+        - name: DATABASE_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: flaskapp-config
+              key: database-host
+        - name: DATABASE_DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: flaskapp-config
+              key: database-name
+        - name: DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: flaskapp-secret
+              key: database-user
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: flaskapp-secret
+              key: database-password
+        - name: SKIP_INSTANCE_METADATA
+          value: "true"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flaskapp
+spec:
+  selector:
+    app: flaskapp
+  ports:
+  - port: 80
+    targetPort: 80
+  type: LoadBalancer

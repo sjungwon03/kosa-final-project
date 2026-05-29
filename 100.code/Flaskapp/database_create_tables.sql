@@ -1,5 +1,4 @@
-CREATE DATABASE IF NOT EXISTS employees;
-use employees
+USE flaskapp;
 
 CREATE TABLE IF NOT EXISTS employee (
   id int not null auto_increment primary key,
