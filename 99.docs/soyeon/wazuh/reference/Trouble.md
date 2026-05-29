@@ -1,6 +1,5 @@
 # Wazuh 트러블슈팅
 ## ① Wazuh 서비스 구동 실패 (Timeout / 좀비 프로세스)
-
 **원인**
 systemd 제한 시간 초과 또는 강제 종료 후 잔재 프로세스가 포트를 점유.
 
@@ -21,6 +20,7 @@ sudo systemctl reset-failed wazuh-dashboard && sudo systemctl start wazuh-dashbo
 sudo systemctl status wazuh-indexer wazuh-manager wazuh-dashboard --no-pager | grep Active
 ```
 
+
 ## ② Wazuh Manager 버전 불일치 (Agent 등록 실패)
 **원인**
 Ansible 설치 시 Manager v4.7.5, Agent v4.14.5로 버전 불일치 → Agent 등록 거부.
@@ -31,6 +31,7 @@ Manager를 Agent 버전에 맞게 업그레이드.
 sudo apt install wazuh-manager=4.14.5-*
 sudo systemctl restart wazuh-manager
 ```
+
 
 ## ③ Wazuh Indexer 인증서 IP 불일치 (x509 오류)
 **원인**  
@@ -43,7 +44,7 @@ Ansible 설치 시 인증서가 자동으로 `127.0.0.1`로 발급되어 `172.16
 ssl.verification_mode: none
 ```
 
-## ④ Wazuh Indexer 9200 포트 외부 미수신
+### ④ Wazuh Indexer 9200 포트 외부 미수신
 **원인**  
 `network.host`가 `127.0.0.1`로 설정되어 외부 접근 불가.  
 
@@ -54,7 +55,6 @@ sudo systemctl restart wazuh-indexer
 ```
 
 ## ⑤ pfSense 커스텀 디코더/룰 XML 인코딩 오류
-
 **증상**  
 wazuh-manager 재시작 시 즉시 실패하며 analysisd가 pfsense_rules.xml을 읽지 못하고 중단됨.  
 <img width="710" alt="image" src="https://github.com/user-attachments/assets/9d98bab8-64a1-44d7-b8ac-c96504d9425b" />
@@ -86,6 +86,7 @@ seccomp(보안 컴퓨팅 모드)가 스레드 생성을 차단.
 **해결**  
 systemd override로 SecureBits 제한 해제.  
 <img width="600" alt="filebeat_정상실행" src="https://github.com/user-attachments/assets/beaa5dfb-e486-4881-9aa1-fa364b9023d5" />
+
 
 ## ⑦ ossec.conf XML 구조 오류 (active-response / global 블록 중복)
 **원인**  
